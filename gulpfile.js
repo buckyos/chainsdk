@@ -10,7 +10,7 @@ gulp.task("compile", function() {
         .pipe(tsProject())
         .js
         .pipe(sourcemaps.write())
-        .pipe(gulp.dest("dist/blockchain-sdk/src"));
+        .pipe(gulp.dest("dist/blockchain-sdk"));
 });
 
 // 其他需要拷贝到dist目录的非代码文件,可以在这里加,调用npm run build会拷贝到dist
