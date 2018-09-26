@@ -1,8 +1,11 @@
-#以npm包引入此项目
+# 以npm包引入此项目
 运行```npm install blockchain-sdk```安装，在项目中使用```import {} from 'blockchain-sdk'```
 
-#node版本
+# node版本
 本项目正常运行需要nodejs 8 LTS版本，且版本号 >= 8.9
+
+# 开发环境
+目前开发团队主要在windows + VSCode环境下开发，暂只提供bat脚本；其他平台脚本会在以后版本陆续添加
 
 # 项目编译
 1. 在根目录下执行命令```npm install```安装依赖包，因有模块需要编译，各系统需要安装C++编译器
@@ -36,10 +39,8 @@ miner.bat传入--forceClean后，会删除本地已同步的块内容，用创�
 
 推荐测试网络的节点不要连接到开发网络的snServer，可以自己启动一个snServer来构造测试网络。启动sn节点的说明参见doc/SNPeer.md
 
-#demo说明
-项目在demo文件夹下带有三个demo，代表不同共识算法的chain的实现：
-coin demo: pow共识chain的实现，有转账，账户查询余额等标准功能
-dpos demo：完整的dpos共识chain的实现，除实现了标准功能及dpos需要的候选、投票等功能外，还以智能合同的方式实现了发布代币和一个简单的拍卖行demo
-dbft demo: dbft共识chain的实现，实现了标准功能及通过SA密钥签发新dbft节点的功能，未实现dbft中的投票功能
-
-目前开发团队主要在windows + VSCode环境下开发，暂只提供bat脚本；其他平台脚本会在以后版本陆续添加
+# demo说明
+项目在demo文件夹下带有三个demo，代表不同共识算法的chain的实现：    
+1. coin demo: PoW共识chain的实现，有转账，账户查询余额等标准功能     
+2. dpos demo：完整的DPoS共识chain的实现，除实现了标准功能及DPoS需要的候选、投票等功能外，还以智能合同的方式实现了发布代币和一个简单的拍卖行demo    
+3. dbft demo: dBFT共识chain的实现，实现了标准功能及通过SA密钥签发新dBFT节点的功能，未实现dBFT中的投票功能     
