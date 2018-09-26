@@ -1,0 +1,19 @@
+如何运行一个使用bdt的dpos链：
+1. 启动一个snPeer，用于节点发现
+   参见"启动SNPeer.txt"文件，在一台外网服务器上启动一个SNPeer。连入同一个SNPeer的节点视作在同一网络中
+
+2. 生成创世块，指定首轮出块者
+   dpos链的首轮出块者是写在创世块中的，创世块中写入的每个出块者最好都能上线，如果某个出块者在24小时内都没出过块，这个miner会被ban掉
+
+   生成指定出块者的创世块：
+   1. 编辑demo\dpos\genesis.json文件，文件中preBalances字段表示预分配Token，miners字段表示首轮出块者，candidates表示首轮候选人，这些候选人可被投票成为下一轮出块者
+   2. 执行demo\dpos\create.bat文件，生成新的创世块在demo/dpos/genesis中
+
+3. 启动miner
+   最好启动所有写入出块列表的miner，具体命令可参见demo/dpos/miner.bat和miner2.bat
+   git上预生成的genesis中写有两个出块者，因此也分miner.bat和miner2.bat来分别启动两个miner节点
+
+注意：bdt网络中，通过Peerid来区分不同的节点。miner和peer上线时的Peerid固定为<host>:<port>, 分别为启动命令行中--host和--port传入的参数。
+整个网络中不同节点的peerid一定不能相同！！
+
+doc/测试账号.txt中写有预先生成的4个账户和对应私钥，可用来测试

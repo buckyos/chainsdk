@@ -1,0 +1,13 @@
+{
+    "handler":"./handler.js",
+    "type": {
+        "consensus":"pow",
+        "features":[]
+    },
+    "global": {
+        "retargetInterval":10,
+        "targetTimespan":60,
+        "basicBits":520159231,
+        "limit":"0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+}

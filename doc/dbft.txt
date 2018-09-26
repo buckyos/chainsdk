@@ -1,0 +1,29 @@
+一.配置：详细参见../demo/dbft/chain/里面的config.json和genesis.json，
+    preBalances:和dpos一样,一定要给CA节点预设值一些余额,后面需要它来注册miner
+    miners：里面一定要包含一个CA节点，该节点将认证其他miner的加入，建议里面就配置一个CA节点作为初始miner
+    consensus.minValidator: miner的最小数量
+    consensus.maxValidator: miner的最大数量
+    consensus.reSelectionBlocks: miner更新周期
+    consensus.blockInterval：出块周期，单位秒
+    consensus.minWaitBlocksToMiner：从注册的block高度开始，候选节点必须要经过minWaitBlocksToMiner块后才能正式节点
+                                    说明：reSelectionBlocks：10；minWaitBlocksToMiner：15，某个节点在第99块被注册为
+                                    候选节点，那么在第100、110高度的时候因为没有间隔15个块所以它不会成为miner，只会在120
+                                    之后才会成为正式miner
+    consensus.systemPubkey：CA节点的pubkey
+    consensus.superAdmin：CA节点地址
+    consensus.agreeRateNumerator
+    consensus.agreeRateDenominator：和agreeRateNumerator一起组成了确认的百分比，比如agreeRateNumerator：2、agreeRateDenominator：3，表示必须要三分之二的节点确认
+                                    后才能表示块成功。
+
+二.创建创世块：详细见命令：../demo/dbft/create.bat
+三.启动CA节点:详细见命令:../demo/dbft/miner1.bat,这一步有几个点需要注意
+    1.一定要保证紧跟在创建创世块后面,比如consensus.blockInterval设置10s,那么必须在创建创世块之后10s内完成;
+    2.minerSecret必须是和consensus.systemPubkey相对应
+    3.peerid必须是通过pubkey获取的地址,不能随意填写一个peer地址
+四.启动其他miner:命令行和第三步一样.注意peerid的地址是通过pubkey获取
+五.注册miner:用CA的私钥启动钱包,命令参考../demo/dbft/wallet.bat,调用register注册miner,比如runEnv.register('1EYLLvMtXGeiBJ7AZ6KJRP2BdAQ2Bof79','1')
+    如果需要下线miner嗲用runEnv.unregister('12nD5LgUnLZDbyncFnoFB43YxhSFsERcgQ','1')
+
+PS:
+    1.CA节点不能掉线,否则无法注册新的miner
+    2.测试阶段需要重启节点,必须删除数据重复前面二三四五步
