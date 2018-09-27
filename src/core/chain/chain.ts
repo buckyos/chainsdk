@@ -59,7 +59,6 @@ export type ChainGlobalOptions = {
     txlivetime: number;
     maxPengdingCount: number;
     warnPengdingCount: number;
-    blockTxMaxCount: number;
 };
 
 export type ChainInstanceOptions = {
@@ -394,9 +393,6 @@ export class Chain extends EventEmitter {
         }
         if (isNullOrUndefined(globalOptions.warnPengdingCount)) {
             globalOptions.warnPengdingCount = 5000;
-        }
-        if (isNullOrUndefined(globalOptions.blockTxMaxCount)) {
-            globalOptions.blockTxMaxCount = 5;
         }
         return true;
     }

@@ -91,12 +91,12 @@ export class ValueTransactionExecutor extends TransactionExecutor {
         } 
         let kvBalance = (await storage.getKeyValue(Chain.dbSystem, ValueChain.kvBalance)).kv!;
         let fromAddress: string = this.m_tx.address!;
-        let nToValue: BigNumber = (this.m_tx as ValueTransaction).value;
         let nFee: BigNumber = (this.m_tx as ValueTransaction).fee;
+        let nToValue: BigNumber = (this.m_tx as ValueTransaction).value.plus(nFee);
 
         let receipt: ValueReceipt = new ValueReceipt(); 
         let ve = new Context(kvBalance);
-        if ((await ve.getBalance(fromAddress)).lt(nToValue.plus(nFee))) {
+        if ((await ve.getBalance(fromAddress)).lt(nToValue)) {
             receipt.returnCode = ErrorCode.RESULT_NOT_ENOUGH;
             receipt.transactionHash = this.m_tx.hash; 
             return {err: ErrorCode.RESULT_OK, receipt};

@@ -159,14 +159,18 @@ export class Miner extends EventEmitter {
         await this.chain.setIdle(true);
         return ret;
     }
+
+    protected pushTx(block: Block) {
+        let tx = this.chain.pending.popTransaction();
+        while (tx) {
+            block.content.addTransaction(tx);
+            tx = this.chain.pending.popTransaction();
+        }
+    }
     protected async __createBlock(header: BlockHeader): Promise<{err: ErrorCode, block?: Block}> {
         let block = this.chain.newBlock(header);
         this.m_state = MinerState.executing;
-        let nMax: number = this.m_constructOptions.globalOptions.blockTxMaxCount;
-        let txs = this.chain.pending.popTransaction(nMax);
-        while (txs.length > 0) {
-            block.content.addTransaction(txs.shift()!);
-        }
+        this.pushTx(block);
         await this._decorateBlock(block);
         let sr = await this.chain.storageManager.createStorage(header.preBlockHash, block.header.preBlockHash);
         if (sr.err) {

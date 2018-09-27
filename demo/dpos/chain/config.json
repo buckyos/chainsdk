@@ -13,7 +13,6 @@
         "timeBan": 2592000,
         "unbanBlocks": 100,
         "dposVoteMaxProducers": 30,
-        "maxBlockIntervalOffset": 1,
-        "blockTxMaxCount": 5
+        "maxBlockIntervalOffset": 1
     }
 }

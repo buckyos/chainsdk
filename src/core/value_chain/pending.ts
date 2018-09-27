@@ -111,4 +111,24 @@ export class ValuePendingTransactions extends PendingTransactions {
         await this._updateBalance(txNew.address as string, br.value!.plus(txOld.value).minus(txNew.value).plus(txOld.fee).minus(txNew.fee));
         return ;
     }
+
+    public popTransactionWithFee(maxFee: BigNumber): ValueTransaction[] {
+        let txs: ValueTransaction[] = [];
+        let total: BigNumber = new BigNumber(0);
+        while (true) {
+            let pt = this._popTransaction(1);
+            if (pt.length === 0) {
+                break;
+            }
+
+            total = total.plus((pt[0].tx as ValueTransaction).fee);
+            if (total.gt(maxFee)) {
+                this.m_transactions.unshift(pt[0]);
+                break;
+            }
+
+            txs.push(pt[0].tx as ValueTransaction);
+        }
+        return txs;
+    }
 }

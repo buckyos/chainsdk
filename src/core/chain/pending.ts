@@ -78,8 +78,16 @@ export class PendingTransactions {
         return ret;
     }
 
-    public popTransaction(nCount: number): Transaction[] {
-        let txs: Transaction[] = [];
+    public popTransaction(): Transaction | undefined {
+        let txs: TransactionWithTime[] = this._popTransaction(1);
+        if (txs.length === 0) {
+            return ;
+        }
+
+        return txs[0].tx;
+    }
+    protected _popTransaction(nCount: number): TransactionWithTime[] {
+        let txs: TransactionWithTime[] = [];
         let toOrphan: Set<string> = new Set();
         while (this.m_transactions.length > 0 && txs.length < nCount) {
             let txTime: TransactionWithTime = this.m_transactions.shift()!;
@@ -92,7 +100,7 @@ export class PendingTransactions {
                 if (toOrphan.has(txTime.tx.address!)) {
                     this.addToOrphan(txTime);
                 } else {
-                    txs.push(txTime.tx);
+                    txs.push(txTime);
                 }
             }
         }
@@ -131,12 +139,9 @@ export class PendingTransactions {
         }
         this.m_curHeader = header;
         this.m_storageView = svr.storage!;
-        this.m_logger.info(`===============begin updateTipBlock`);
         await this.m_pendingLock.enter(true);
-        this.m_logger.info(`==========inlock`);
         await this.removeTx();
         await this.m_pendingLock.leave();
-        this.m_logger.info(`===============end updateTipBlock`);
         return ErrorCode.RESULT_OK;
     }
 

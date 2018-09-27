@@ -45,7 +45,7 @@ export class ChainServer {
 
     _initMethods() {
         this.m_server!.on('sendTransaction', async (params: {tx: any}, resp) => {
-            let tx = ValueTransaction.fromRaw(params.tx, ValueTransaction);
+            let tx = ValueTransaction.fromRaw(Buffer.from(params.tx, 'hex'), ValueTransaction);
             if (!tx) {
                 await promisify(resp.write.bind(resp)(JSON.stringify(ErrorCode.RESULT_INVALID_FORMAT)));
             } else {
