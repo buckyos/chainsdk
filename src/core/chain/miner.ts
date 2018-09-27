@@ -172,7 +172,8 @@ export class Miner extends EventEmitter {
         this.m_state = MinerState.executing;
         this.pushTx(block);
         await this._decorateBlock(block);
-        let sr = await this.chain.storageManager.createStorage(header.preBlockHash, block.header.preBlockHash);
+        let name: string = Date.now().toString() + header.preBlockHash;
+        let sr = await this.chain.storageManager.createStorage(name, block.header.preBlockHash);
         if (sr.err) {
             return {err: sr.err};
         }
