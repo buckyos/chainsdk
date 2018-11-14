@@ -1,7 +1,7 @@
 import { ErrorCode } from '../error_code';
 import { IConnection } from './connection';
 import { Package } from './package'; 
-import { PackageStreamWriter } from './writer';
+import { PackageStreamWriter, WRITER_EVENT } from './writer';
 import { PackageStreamReader } from './reader';
 import { EventEmitter } from 'events';
 let assert = require('assert');
@@ -9,6 +9,7 @@ import {Version} from './version';
 import { BufferReader } from '../lib/reader';
 import { BufferWriter } from '../lib/writer';
 import {LoggerOptions, LoggerInstance, initLogger} from '../lib/logger_util';
+import { networkInterfaces } from 'os';
 
 export enum CMD_TYPE {
     version= 0x01,
@@ -24,13 +25,36 @@ interface INodeConnection {
     version?: Version;
 }
 
-export type NodeConnection = INodeConnection & IConnection;
+export type NodeConnection = INodeConnection & IConnection & {fullRemote: string};
 
 export class INode extends EventEmitter {
     public async randomPeers(count: number, excludes: string[]): Promise<{err: ErrorCode, peers: string[]}> {
         return {err: ErrorCode.RESULT_NO_IMP, peers: []};
     }
-    protected m_peerid?: string;
+
+    static isValidPeerid(peerid: string): boolean {
+        return -1 === peerid.indexOf('^');
+    }
+
+    static isValidNetwork(network: string): boolean {
+        return -1 === network.indexOf('^');
+    }
+    
+    static fullPeerid(network: string, peerid: string): string {
+        return `${network}^${peerid}`;
+    }
+
+    static splitFullPeerid(fpeerid: string): undefined|{network: string, peerid: string} {
+        const spliter = fpeerid.indexOf('^');
+        if (-1 === spliter) {
+            return undefined;
+        }
+        const parts = fpeerid.split('^');
+        return {network: parts[0], peerid: parts[1]};
+    }
+
+    protected m_network: string;
+    protected m_peerid: string;
     // chain的创始块的hash值，从chain_node传入， 可用于传输中做校验
     protected m_genesis?: string;
 
@@ -39,9 +63,10 @@ export class INode extends EventEmitter {
     protected m_remoteMap: Map<string, NodeConnection> = new Map();
     protected m_logger: LoggerInstance;
 
-    constructor(options: {peerid: string} & LoggerOptions) {
+    constructor(options: {network: string, peerid: string} & LoggerOptions) {
         super();
         this.m_peerid = options.peerid;
+        this.m_network = options.network;
         this.m_logger = initLogger(options);
     }
 
@@ -57,16 +82,20 @@ export class INode extends EventEmitter {
         return this.m_peerid;
     }
 
+    get network() {
+        return this.m_network;
+    }
+
     public async init() {
     }
 
     public dumpConns() {
         let ret: string[] = [];
         this.m_inConn.forEach((element) => {
-            ret.push(` <= ${element.getRemote()}`);
+            ret.push(` <= ${element.remote!}`);
         });
         this.m_outConn.forEach((element) => {
-            ret.push(` => ${element.getRemote()}`);
+            ret.push(` => ${element.remote!}`);
         });
 
         return ret;
@@ -102,7 +131,9 @@ export class INode extends EventEmitter {
             return {err: result.err, peerid};
         }
         let conn = result.conn;
-        conn.setRemote(peerid);
+        
+        conn.remote = peerid;
+        conn.network = this.network;
         let ver: Version = new Version();
         conn.version = ver;
         if (!this.m_genesis || !this.m_peerid) {
@@ -173,18 +204,18 @@ export class INode extends EventEmitter {
         if (options && options.count) {
             nMax = options.count;
         }
-        let sended: Map<string, number> = new Map();
+        let sent: Map<string, number> = new Map();
         for (let conn of this.m_inConn) {
             if (nSend === nMax) {
                 return {err: ErrorCode.RESULT_OK, count: nSend};
             }
-            if (sended.has(conn.getRemote())) {
+            if (sent.has(conn.remote!)) {
                 continue;
             }
             if (!options || !options.filter || options!.filter!(conn)) {
                 conn.addPendingWriter(writer.clone());
                 nSend++;
-                sended.set(conn.getRemote(), 1);
+                sent.set(conn.remote!, 1);
             }
         }
 
@@ -192,13 +223,13 @@ export class INode extends EventEmitter {
             if (nSend === nMax) {
                 return {err: ErrorCode.RESULT_OK, count: nSend};
             }
-            if (sended.has(conn.getRemote())) {
+            if (sent.has(conn.remote!)) {
                 continue;
             }
             if (!options || !options.filter || options!.filter!(conn)) {
                 conn.addPendingWriter(writer.clone());
                 nSend++;
-                sended.set(conn.getRemote(), 1);
+                sent.set(conn.remote!, 1);
             }
         }
         return {err: ErrorCode.RESULT_OK, count: nSend};
@@ -241,7 +272,6 @@ export class INode extends EventEmitter {
     }
 
     public banConnection(remote: string): void {
-        // TODO: 要写到一个什么地方，禁多久，忽略这个peer
         let conn = this.m_remoteMap.get(remote);
         if (conn) {
             this.closeConnection(conn, true);
@@ -269,13 +299,12 @@ export class INode extends EventEmitter {
                 index++;
             }
         } while (false);
-        this.m_remoteMap.delete(conn.getRemote());
+        this.m_remoteMap.delete(conn.remote!);
         if (destroy) {
             conn.destroy();
         } else {
             conn.close();
         }
-        
     }
 
     on(event: 'inbound', listener: (conn: NodeConnection) => void): this;
@@ -300,19 +329,20 @@ export class INode extends EventEmitter {
                 inbound.version = ver;
                 let err = ver.decode(dataReader);
                 if (err) {
-                    this.m_logger.warn(`recv version in invalid format from ${inbound.getRemote()} `);
+                    this.m_logger.warn(`recv version in invalid format from ${inbound.remote!} `);
                     inbound.close();
                     return;
                 }
                 // 检查对方包里的genesis_hash是否对应得上
                 if ( ver.genesis !== this.m_genesis ) {
-                    this.m_logger.warn(`recv version genesis ${ver.genesis} not match ${this.m_genesis} from ${inbound.getRemote()} `);
+                    this.m_logger.warn(`recv version genesis ${ver.genesis} not match ${this.m_genesis} from ${inbound.remote!} `);
                     inbound.close();
                     return;
                 }
                 // 忽略网络传输时间
                 let nTimeDelta = ver.timestamp - Date.now();
-                inbound.setRemote(ver.peerid);
+                inbound.remote = ver.peerid;
+                inbound.network = this.network;
                 inbound.setTimeDelta(nTimeDelta);
                 let isSupport = true;
                 let ackWriter = PackageStreamWriter.fromPackage(CMD_TYPE.versionAck, { isSupport, timestamp: Date.now() }, 0);
@@ -321,7 +351,7 @@ export class INode extends EventEmitter {
                     inbound.close();
                     return;
                 }
-                let other = this.getConnection(inbound.getRemote());
+                let other = this.getConnection(inbound.remote!);
                 if (other) {
                     if (inbound.version!.compare(other.version!) > 0) {
                         inbound.close();
@@ -370,11 +400,14 @@ export class INode extends EventEmitter {
                 // 接收到 reader的传出来的error 事件后, emit ban事件, 给上层的chain_node去做处理
                 // 这里只需要emit给上层, 最好不要处理其他逻辑
                 this.m_reader.on('error', (err: ErrorCode, column: string ) => {
-                    let remote = this.getRemote();
+                    let remote = this.remote!;
                     thisNode.emit('ban', remote);
                 });
             }
 
+            get fullRemote(): string {
+                return INode.fullPeerid(this.network!, this.remote!);
+            }
             private m_pendingWriters: PackageStreamWriter[];
             private m_reader: PackageStreamReader;
             addPendingWriter(writer: PackageStreamWriter): void {
@@ -382,12 +415,14 @@ export class INode extends EventEmitter {
                     let _writer = this.m_pendingWriters.splice(0, 1)[0];
                     _writer.close();
                     if (this.m_pendingWriters.length) {
-                        this.m_pendingWriters[0].on('finish', onFinish);
+                        this.m_pendingWriters[0].on(WRITER_EVENT.finish, onFinish);
+                        this.m_pendingWriters[0].on(WRITER_EVENT.error, onFinish);
                         this.m_pendingWriters[0].bind(this);
                     }
                 };
                 if (!this.m_pendingWriters.length) {
-                    writer.on('finish', onFinish);
+                    writer.on(WRITER_EVENT.finish, onFinish);
+                    writer.on(WRITER_EVENT.error, onFinish);
                     writer.bind(this);
                 } 
                 this.m_pendingWriters.push(writer);

@@ -1,14 +1,45 @@
+import {isNullOrUndefined} from 'util';
 import {ErrorCode} from '../error_code';
-import {BaseNode, BaseNodeOptions, PackageStreamWriter, NodeConnection} from '../chain';
+import {Network, NetworkOptions, NetworkInstanceOptions, PackageStreamWriter, NodeConnection} from '../chain';
 
-export type ValidatorsNodeOptions = {minConnectionRate: number} & BaseNodeOptions;
+export type ValidatorsNetworkInstanceOptions = {minConnectionRate: number, initialValidator: string} & NetworkInstanceOptions;
 
-export class ValidatorsNode extends BaseNode {
+export class ValidatorsNetwork extends Network {
     private m_validators: string[] = [];
-    private m_minConnectionRate: number;
-    constructor(options: ValidatorsNodeOptions) {
+    private m_minConnectionRate?: number;
+    constructor(options: NetworkOptions) {
         super(options);
+    }
+
+    setInstanceOptions(options: any) {
+        super.setInstanceOptions(options);
         this.m_minConnectionRate = options.minConnectionRate;
+        this.setValidators([options.initialValidator]);
+    }
+
+    parseInstanceOptions(options: {parsed: any, origin: Map<string, any>}) {
+        let por = super.parseInstanceOptions(options);
+        if (por.err) {
+            return {err: por.err};
+        }
+        let value = Object.create(por.value);
+
+        if (!isNullOrUndefined(options.parsed.minConnectionRate)) {
+            value.minConnectionRate = options.parsed.minConnectionRate;
+        } else if (options.origin.has('minConnectionRate')) {
+            value.minConnectionRate = parseInt(options.origin.get('minConnectionRate'));
+        } else {
+            return {err: ErrorCode.RESULT_INVALID_PARAM};
+        }
+
+        if (!isNullOrUndefined(options.parsed.initialValidator)) {
+            value.initialValidator = options.parsed.initialValidator;
+        } else if (options.origin.has('initialValidator')) {
+            value.initialValidator = options.origin.get('initialValidator');
+        } else {
+            return {err: ErrorCode.RESULT_INVALID_PARAM};
+        }
+        return {err: ErrorCode.RESULT_OK, value};
     }
 
     setValidators(validators: string[]) {
@@ -22,7 +53,7 @@ export class ValidatorsNode extends BaseNode {
     }
 
     private _getMinOutbound(): number {
-        return Math.ceil(this.m_validators.length * this.m_minConnectionRate); 
+        return Math.ceil(this.m_validators.length * this.m_minConnectionRate!); 
     }
 
     private m_checkOutboundTimer: any;
@@ -74,7 +105,7 @@ export class ValidatorsNode extends BaseNode {
     public broadcastToValidators(writer: PackageStreamWriter): Promise<{err: ErrorCode, count: number}> {
         let validators = new Set(this.m_validators);
         return this.m_node.broadcast(writer, {count: validators.size, filter: (conn: NodeConnection) => {
-            return validators.has(conn.getRemote());
+            return validators.has(conn.remote!);
         }});
     }
 }

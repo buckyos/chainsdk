@@ -101,6 +101,10 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
         return path.join(this.m_logPath, blockHash + '.redo');
     }
 
+    hasRedoLog(blockHash: string): boolean {
+        return fs.existsSync(this.getLogPath(blockHash));
+    }
+
     public getRedoLog(blockHash: string): JStorageLogger|undefined {
         let redoLogRaw;
         try {
@@ -140,12 +144,12 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
     }
 
     async getSnapshot(blockHash: string): Promise<{err: ErrorCode, snapshot?: StorageDumpSnapshot}> {
-        this.m_logger.debug(`getting snapshot ${blockHash}`);
+        this.m_logger.info(`getting snapshot ${blockHash}`);
         // 只能在storage manager 的实现中调用，在storage manager中保证不会以相同block hash重入
         let ssr = await this.m_dumpManager.getSnapshot(blockHash);
         if (!ssr.err) {
             assert(this.m_snapshots.get(blockHash));
-            this.m_logger.debug(`get snapshot ${blockHash} directly from dump`);
+            this.m_logger.info(`get snapshot ${blockHash} directly from dump`);
             ++this.m_snapshots.get(blockHash)!.ref; 
             return ssr;
         } else if (ssr.err !== ErrorCode.RESULT_NOT_FOUND) {
@@ -162,6 +166,7 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
         let header = hr.header!;
         let err = ErrorCode.RESULT_NOT_FOUND;
         let nearestSnapshot: StorageDumpSnapshot;
+        this.m_logger.info(`================================getSnapshot need redo blockHash=${blockHash}`);
         do {
             let _ssr = await this.m_dumpManager.getSnapshot(header.hash);
             if (!_ssr.err) {
@@ -173,6 +178,7 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
                 err = _ssr.err;
                 break;
             }
+            blockPath.push(header.hash);
             let _hr = await this.m_headerStorage.getHeader(header.preBlockHash);
             if (_hr.err) {
                 this.m_logger.error(`get snapshot ${blockHash} failed for get header ${header.preBlockHash} failed ${hr.err}`);
@@ -180,7 +186,6 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
                 break;
             }
             header = _hr.header!;
-            blockPath.push(header.hash);
         } while (true);
         if (err) {
             this.m_logger.error(`get snapshot ${blockHash} failed for ${err}`);

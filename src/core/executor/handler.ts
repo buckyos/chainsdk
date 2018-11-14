@@ -53,6 +53,10 @@ export class BaseHandler {
         return this.m_viewListeners.get(name) as ViewListener;
     }
 
+    public getViewMethodNames(): Array<string> {
+        return [...this.m_viewListeners.keys()];
+    }
+
     public addPreBlockListener(filter: BlockHeigthFilter, listener: BlockHeightListener) {
         this.m_preBlockListeners.push({filter, listener});
     }

@@ -195,13 +195,13 @@ function main() {
             }
         },
 
-        getStoke: async (_address: string) => {
+        getStake: async (_address: string) => {
             let ret = await chainClient.view({
-                method: 'getStoke',
+                method: 'getStake',
                 params: {address: _address}
             });
             if (ret.err) {
-                console.error(`getStoke failed for ${ret.err};`);
+                console.error(`getStake failed for ${ret.err};`);
                 return ;
             }
             console.log(`${ret.value!}`);

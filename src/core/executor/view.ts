@@ -81,10 +81,13 @@ export class ViewExecutor {
         return context;
     }
 
-    public async execute(): Promise<{err: ErrorCode, value?: any}>  {
+    public async execute(): Promise<{err: ErrorCode, value?: any, methods?: Array<string>}>  {
         let fcall: ViewListener|undefined =  this.m_handler.getViewMethod(this.m_method);
         if (!fcall) {
-            return {err: ErrorCode.RESULT_NOT_SUPPORT};    
+            // 找不到view method时, 错误日志里列出全部可选的method
+            let methods = this.m_handler.getViewMethodNames();
+            this.m_logger.error(`view execute getViewMethod fail, method=${this.m_method}; suport methods [${methods.join(',')} ]`);
+            return {err: ErrorCode.RESULT_NOT_SUPPORT, methods};    
         }
         let context = await this.prepareContext(this.m_header, this.m_storage, this.m_externContext);
        

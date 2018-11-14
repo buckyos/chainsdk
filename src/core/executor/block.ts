@@ -49,34 +49,40 @@ export class BlockExecutor {
         return new EventExecutor(l, this.m_logger);
     }
  
-    public async execute(): Promise<ErrorCode> {      
-        return await this._execute(this.m_block);
+    public async execute(): Promise<ErrorCode> {
+        let t1: number = Date.now();
+        let ret = await this._execute(this.m_block);
+        let t2: number = Date.now();
+        this.m_logger.info(`runblock time====${t2 - t1}, count=${this.m_block.content.transactions.length}`);
+        return ret;
     }
 
-    public async verify(logger: LoggerInstance): Promise<{err: ErrorCode, valid?: boolean}> {
+    public async verify(): Promise<{err: ErrorCode, valid?: ErrorCode}> {
         let oldBlock = this.m_block;
         this.m_block = this.m_block.clone();
         let err = await this.execute();
         if (err) {
             if (err === ErrorCode.RESULT_TX_CHECKER_ERROR) {
-                return {err: ErrorCode.RESULT_OK, valid: false};
+                return {err: ErrorCode.RESULT_OK, valid: ErrorCode.RESULT_TX_CHECKER_ERROR};
             } else {
                 return {err};
             }
         }
         if (this.m_block.hash !== oldBlock.hash) {
-            logger.error(`block ${oldBlock.number} hash mismatch!! 
+            this.m_logger.error(`block ${oldBlock.number} hash mismatch!! 
             except storage hash ${oldBlock.header.storageHash}, actual ${this.m_block.header.storageHash}
             except hash ${oldBlock.hash}, actual ${this.m_block.hash}
             `);
         }
-        return {err: ErrorCode.RESULT_OK, 
-            valid: this.m_block.hash === oldBlock.hash};
+        if (this.m_block.hash === oldBlock.hash) {
+            return {err: ErrorCode.RESULT_OK, valid: ErrorCode.RESULT_OK}; 
+        } else {
+            return {err: ErrorCode.RESULT_OK, valid: ErrorCode.RESULT_VERIFY_NOT_MATCH};
+        }
     } 
 
     protected async _execute(block: Block): Promise<ErrorCode> {
         this.m_logger.info(`begin execute block ${block.number}`);
-        this.m_storage.createLogger();
         let err = await this.executePreBlockEvent();
         if (err) {
             this.m_logger.error(`blockexecutor execute begin_event failed,errcode=${err},blockhash=${block.hash}`);
@@ -97,7 +103,7 @@ export class BlockExecutor {
         // 票据
         block.content.setReceipts(receipts);
         // 更新块信息
-        return this._updateBlock(block);
+        return await this._updateBlock(block);
     }
 
     public async executeBlockEvent(listener: BlockHeightListener): Promise<ErrorCode> {
@@ -134,7 +140,7 @@ export class BlockExecutor {
     public async executePostBlockEvent(): Promise<ErrorCode> {
         let listeners = await this.m_handler.getPostBlockListeners(this.m_block.number);
         for (let l of listeners) {
-            const err = this.executeBlockEvent(l); 
+            const err = await this.executeBlockEvent(l); 
             if (err) {
                 return err;
             }

@@ -1,9 +1,9 @@
-import { ErrorCode } from './error_code';
-import { LoggerInstance, initLogger, LoggerOptions } from './lib/logger_util';
-import { BaseHandler, ChainGlobalOptions, ChainTypeOptions, Chain, Miner } from './chain';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as process from 'process';
+import { ErrorCode } from './error_code';
+import { LoggerInstance, initLogger, LoggerOptions } from './lib/logger_util';
+import { BaseHandler, ChainGlobalOptions, ChainTypeOptions, Chain, Miner, NetworkCreator } from './chain';
 
 export type ChainCreatorConfig = {handler: BaseHandler, 
     typeOptions: ChainTypeOptions, 
@@ -18,8 +18,15 @@ type ChainTypeInstance = {
 export class ChainCreator {
     private m_logger: LoggerInstance;
     private m_instances: Map<string, ChainTypeInstance> = new Map();
-    constructor(options: LoggerOptions) {
+    private m_networkCreator: NetworkCreator;
+
+    constructor(options: LoggerOptions & {networkCreator: NetworkCreator}) {
         this.m_logger = initLogger(options);
+        this.m_networkCreator = options.networkCreator;
+    }
+
+    public get networkCreator(): NetworkCreator {
+        return this.m_networkCreator;
     }
 
     public registerChainType(consesus: string, instance: ChainTypeInstance) {

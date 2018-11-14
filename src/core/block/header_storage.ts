@@ -182,7 +182,7 @@ export class HeaderStorage implements IHeaderStorage {
             } else {
                 let headerEntry: BlockHeaderEntry|null = this.m_cacheHash.get(arg as string);
                 if (headerEntry) {
-                    this.m_logger.debug(`get header storage directly from cache hash: ${headerEntry.blockheader.hash} number: ${headerEntry.blockheader.number} verified: ${headerEntry.verified}`);
+                    // this.m_logger.debug(`get header storage directly from cache hash: ${headerEntry.blockheader.hash} number: ${headerEntry.blockheader.number} verified: ${headerEntry.verified}`);
                     return {err: ErrorCode.RESULT_OK, header: headerEntry.blockheader, verified: headerEntry.verified};
                 }
 
@@ -246,6 +246,10 @@ export class HeaderStorage implements IHeaderStorage {
             let headerRaw = writer.render();
             await this.m_db.run(insertHeaderSql, { $hash: header.hash, $raw: headerRaw, $pre: header.preBlockHash, $verified: VERIFY_STATE.notVerified });
         } catch (e) {
+            let s: string = `${e}`;
+            if (s.includes('UNIQUE constraint failed')) {
+                return ErrorCode.RESULT_OK;
+            }
             this.m_logger.error(`save Header ${header.hash}(${header.number}) failed, ${e}`);
             return ErrorCode.RESULT_EXCEPTION;
         }

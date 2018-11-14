@@ -43,8 +43,8 @@ export class ValueChain extends Chain {
         externContext.getBalance = (address: string): Promise<BigNumber> => {
             return ve.getBalance(address);
         };
-        externContext.transferTo = (address: string, amount: BigNumber): Promise<ErrorCode> => {
-            return ve.transferTo(ValueChain.sysAddress, address, amount);
+        externContext.transferTo = async (address: string, amount: BigNumber): Promise<ErrorCode> => {
+            return await ve.transferTo(ValueChain.sysAddress, address, amount);
         };
         let executor = new ValueBlockExecutor({logger: this.logger, block, storage, handler: this.m_handler, externContext, globalOptions: this.m_globalOptions});
         return {err: ErrorCode.RESULT_OK, executor};

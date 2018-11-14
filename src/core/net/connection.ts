@@ -30,13 +30,9 @@ export class IConnection extends EventEmitter {
         return Promise.resolve();
     }
 
-    getRemote(): string {
-        return '';
-    }
+    remote: string|undefined;
 
-    setRemote(s: string) {
-
-    }
+    network: string|undefined;
 
     getTimeDelta(): number {
         return 0;

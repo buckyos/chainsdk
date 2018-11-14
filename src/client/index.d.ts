@@ -1,6 +1,6 @@
 export {BigNumber} from 'bignumber.js';
 import {LoggerInstance} from 'winston';
-
+export {LoggerInstance} from 'winston';
 export enum ErrorCode {
     RESULT_OK = 0,
     RESULT_FAILED = 1,
@@ -216,12 +216,12 @@ export type DposEventContext = {
 
 export type DposViewContext = {
     getVote: () => Promise<Map<string, BigNumber> >;
-    getStoke: (address: string) => Promise<BigNumber>;
+    getStake: (address: string) => Promise<BigNumber>;
     getCandidates: () => Promise<string[]>;
 } & ValueViewContext;
 
 export class ChainClient {
-    constructor(options: {host: string, port: number});
+    constructor(options: {host: string, port: number, logger: LoggerInstance});
 
     getBlock(params: {which: string|number|'lastest', transactions?: boolean}): Promise<{err: ErrorCode, block?: any}>;
 
@@ -293,7 +293,7 @@ export class ValueIndependDebugSession {
 
     updateHeightTo(height: number, coinbase: number, events?: boolean): ErrorCode;
 
-    transaction(options: {caller: number|Buffer, method: string, input: any, value: BigNumber, fee: BigNumber}): Promise<{err: ErrorCode, receipt?: Receipt}>;
+    transaction(options: {caller: number|Buffer, method: string, input: any, value: BigNumber, fee: BigNumber, nonce?: number}): Promise<{err: ErrorCode, receipt?: Receipt}>;
     wage(): Promise<{err: ErrorCode}>;
     view(options: {method: string, params: any}): Promise<{err: ErrorCode, value?: any}>;
     getAccount(index: number): string;
@@ -307,8 +307,8 @@ export class ValueChainDebugSession {
 }
 
 export const valueChainDebuger: {
-    createIndependSession(loggerOptions: {console: boolean, file?: {root: string, filename?: string}, level?: string}, dataDir: string): Promise<{err: ErrorCode, session?: ValueIndependDebugSession}>;
-    createChainSession(loggerOptions: {console: boolean, file?: {root: string, filename?: string}, level?: string}, dataDir: string, debugerDir: string): Promise<{err: ErrorCode, session?: ValueChainDebugSession}>;
+    createIndependSession(loggerOptions: {logger?: LoggerInstance, loggerOptions?: {console: boolean, file?: {root: string, filename?: string}}, level?: string}, dataDir: string): Promise<{err: ErrorCode, session?: ValueIndependDebugSession}>;
+    createChainSession(loggerOptions: {logger?: LoggerInstance, loggerOptions: {console: boolean, file?: {root: string, filename?: string}}, level?: string}, dataDir: string, debugerDir: string): Promise<{err: ErrorCode, session?: ValueChainDebugSession}>;
 };
 
 export function addressFromSecretKey(secret: Buffer|string): string|undefined;

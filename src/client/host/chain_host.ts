@@ -4,76 +4,77 @@ import * as fs from 'fs-extra';
 
 import {Options as CommandOptions} from '../lib/simple_command';
 
-import {INode, initChainCreator, initLogger, Chain} from '../../core';
+import {INode, initChainCreator, initLogger, Chain, Miner, IBlockExecutorRoutineManager, InprocessRoutineManager, InterprocessRoutineManager} from '../../core';
 
 import {ChainServer} from './rpc';
-
-type NetInstance = (commandOptions: CommandOptions) => INode|undefined;
 
 export class ChainHost {
     constructor() {
         
     }
 
-    public async initMiner(commandOptions: CommandOptions): Promise<boolean> {
+    public async initMiner(commandOptions: CommandOptions): Promise<{ret: boolean, miner?: Miner}> {
         let dataDir = this._parseDataDir(commandOptions);
         if (!dataDir) {
             console.error('chain_host initMiner fail _parseDataDir');
-            return false;
+            return {ret: false};
         }
         let logger = this._parseLogger(dataDir, commandOptions);
         let creator = initChainCreator({logger});
         let cr = await creator.createMinerInstance(dataDir);
         if (cr.err) {
             console.error('chain_host initMiner fail createMinerInstance');
-            return false;
+            return {ret: false};
         }
-        let node = this._parseNode(commandOptions);
-        if (!node) {
-            console.error('chain_host initMiner fail _parseNode');
-            return false;
+        
+        let routineManagerType = this._parseExecutorRoutine(cr.miner!.chain, commandOptions);
+        if (!routineManagerType) {
+            console.error('chain_host initMiner fail _parseExecutorRoutine');
+            return {ret: false};
         }
-        let pr = cr.miner!.parseInstanceOptions(node, commandOptions);
+        let pr = cr.miner!.parseInstanceOptions({parsed: {routineManagerType}, origin: commandOptions});
         if (pr.err) {
             console.error('chain_host initMiner fail parseInstanceOptions');
-            return false;
+            return {ret: false};
         }
         let err = await cr.miner!.initialize(pr.value!);
         if (err) {
             console.error('chain_host initMiner fail initialize');
-            return false;
+            return {ret: false};
         }
         this.m_server = new ChainServer(logger, cr.miner!.chain!, cr.miner!);
         this.m_server.init(commandOptions);
-        return true;
+        return {ret: true, miner: cr.miner};
     }
 
-    public async initPeer(commandOptions: CommandOptions): Promise<boolean> {
+    public async initPeer(commandOptions: CommandOptions): Promise<{ret: boolean, chain?: Chain}> {
         let dataDir = this._parseDataDir(commandOptions);
         if (!dataDir) {
-            return false;
+            return {ret: false};
         }
         let logger = this._parseLogger(dataDir, commandOptions);
         let creator = initChainCreator({logger});
         let cr = await creator.createChainInstance(dataDir, {initComponents: true});
         if (cr.err) {
-            return false;
+            return {ret: false};
         }
-        let node = this._parseNode(commandOptions);
-        if (!node) {
-            return false;
+        
+        let routineManagerType = this._parseExecutorRoutine(cr.chain!, commandOptions);
+        if (!routineManagerType) {
+            console.error('chain_host initMiner fail _parseExecutorRoutine');
+            return {ret: false};
         }
-        let pr = cr.chain!.parseInstanceOptions(node, commandOptions);
+        let pr = cr.chain!.parseInstanceOptions({parsed: {routineManagerType}, origin: commandOptions});
         if (pr.err) {
-            return false;
+            return {ret: false};
         }
         let err = await cr.chain!.initialize(pr.value!);
         if (err) {
-            return false;
+            return {ret: false};
         }
         this.m_server = new ChainServer(logger, cr.chain!);
         this.m_server.init(commandOptions);
-        return true;
+        return {ret: true, chain: cr.chain};
     }
 
     private static CREATE_TIP = `command: create --package [packageDir] --dataDir [dataDir] --[genesisConfig] [genesisConfig] --[externalHandler]`;
@@ -133,16 +134,16 @@ export class ChainHost {
         return initLogger({loggerOptions});
     }
 
-    protected _parseNode(commandOptions: CommandOptions): INode|undefined  {
-        if (commandOptions.get('net')) {
-            let ni = this.m_net.get(commandOptions.get('net'));
-            if (!ni) {
-                console.error('invalid net');
-                return undefined;
-            }
-            return ni(commandOptions);
+    protected _parseExecutorRoutine(chain: Chain, commandOptions: CommandOptions): new (chain: Chain) => IBlockExecutorRoutineManager|undefined {
+        if (commandOptions.has('executor')) {
+            if (commandOptions.get('executor') === 'inprocess') {
+                return InprocessRoutineManager;
+            } else if (commandOptions.get('executor') === 'interprocess') {
+                return InterprocessRoutineManager;
+            } 
         }
-    }
+        return InprocessRoutineManager;
+    } 
 
     protected _parseDataDir(commandOptions: CommandOptions): string|undefined {
         let dataDir = commandOptions.get('dataDir');
@@ -174,12 +175,5 @@ export class ChainHost {
         
         return dataDir;
     }
-
-    public registerNet(net: string, instance: NetInstance) {
-        this.m_net.set(net, instance);
-    }
-
-    private m_net: Map<string, NetInstance> = new Map();
-
     protected m_server?: ChainServer;
 }

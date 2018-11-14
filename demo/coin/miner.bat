@@ -4,4 +4,5 @@ node ./dist/blockchain-sdk/src/tool/host.js miner ^
 --dataDir "./data/coin/miner" ^
 --net tcp --host localhost --port 12312 ^
 --rpchost localhost --rpcport 18089 ^
---loggerConsole --loggerLevel debug
+--loggerConsole --loggerLevel debug ^
+--feelimit 10 

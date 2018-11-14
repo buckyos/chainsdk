@@ -94,12 +94,6 @@ export class DbftBlockHeader extends BlockWithSign(ValueBlockHeader) {
     }
 
     public async verify(chain: DbftChain): Promise<{ err: ErrorCode, valid?: boolean }> {
-        // 先验证签名是否正确
-        if (!this._verifySign()) {
-            chain.logger.error(`verify block ${this.number} sign error!`);
-            return { err: ErrorCode.RESULT_OK, valid: false };
-        }
-
         // 从某个设施验证pubkey是否在列表中,是否轮到这个节点出块
         return await this._verifySigns(chain);
     }
@@ -128,5 +122,11 @@ export class DbftBlockHeader extends BlockWithSign(ValueBlockHeader) {
         }
         const valid = DbftContext.isAgreeRateReached(chain.globalOptions, miners.size, verified.size);
         return {err: ErrorCode.RESULT_OK, valid};
+    }
+
+    public stringify(): any {
+        let obj = super.stringify();
+        obj.view = this.m_view;
+        return obj;
     }
 }
