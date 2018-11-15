@@ -10,7 +10,7 @@ export class HostClient {
         this.m_client = new RPCClient(options.host, options.port, this.m_logger);
     }
 
-    async getBlock(params: {which: string|number|'lastest', transactions?: boolean}): Promise<{err: ErrorCode, block?: any, txs?: any}> {
+    async getBlock(params: {which: string|number|'lastest', transactions?: boolean}): Promise<{err: ErrorCode, block?: any, txs?: any[]}> {
         let cr = await this.m_client.callAsync('getBlock', params);
         if (cr.ret !== 200) {
             return {err: ErrorCode.RESULT_FAILED};
