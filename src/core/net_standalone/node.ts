@@ -4,8 +4,8 @@ import {IConnection} from '../net';
 import {StandaloneConnection} from './connection';
 
 export class StandaloneNode extends INode {
-    constructor(peerid: string) {
-        super({peerid});
+    constructor(network: string, peerid: string) {
+        super({network, peerid});
     }
 
     protected async _connectTo(peerid: string): Promise<{err: ErrorCode, conn?: NodeConnection}> {

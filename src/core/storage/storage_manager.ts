@@ -6,6 +6,7 @@ import { isString } from 'util';
 
 import { ErrorCode } from '../error_code';
 import {LoggerInstance} from '../lib/logger_util';
+import {TmpManager} from '../lib/tmp_manager';
 
 import {StorageSnapshotManagerOptions, StorageDumpSnapshot} from './dump_snapshot';
 import {IReadableStorage, Storage, StorageOptions} from './storage';
@@ -17,6 +18,7 @@ export type StorageManagerOptions = {
     path: string;
     storageType: new (options: StorageOptions) => Storage;
     logger: LoggerInstance;
+    tmpManager: TmpManager;
     headerStorage?: IHeaderStorage, 
     snapshotManager?: StorageLogSnapshotManager,
     readonly?: boolean
@@ -34,6 +36,7 @@ export class StorageManager {
         }
         
         this.m_readonly = !!options.readonly;
+        this.m_tmpManager = options.tmpManager;
     }
     private m_readonly: boolean;
     private m_path: string;
@@ -41,6 +44,7 @@ export class StorageManager {
     private m_snapshotManager: StorageLogSnapshotManager;
     private m_logger: LoggerInstance;
     private m_views: Map<string, {storage: Storage, ref: number}> = new Map();
+    private m_tmpManager: TmpManager;
 
     public async init(): Promise<ErrorCode> {
         let err = await this.m_snapshotManager.init();
@@ -87,7 +91,7 @@ export class StorageManager {
             return {err: ErrorCode.RESULT_NOT_SUPPORT};
         }
         let storage = new this.m_storageType({
-            filePath: path.join(this.m_path, name),
+            filePath: this.m_tmpManager.getPath(`${name}.storage`),
             logger: this.m_logger}
         );
         await storage.remove();
@@ -182,13 +186,8 @@ export class StorageManager {
         return this.m_snapshotManager.getRedoLog(blockHash);
     }
 
-    // 对象形式的redo log（通过网络请求, 然后解析buffer获得) 写入至本地文件
-    // 提供给chain层引用
-    public writeRedoLog(blockHash: string, log: StorageLogger): ErrorCode {
-        if (this.m_readonly) {
-            return ErrorCode.RESULT_NOT_SUPPORT;
-        }
-        return this.m_snapshotManager.writeRedoLog(blockHash, log);
+    public hasRedoLog(blockHash: string): boolean {
+        return this.m_snapshotManager.hasRedoLog(blockHash);
     }
 
     public async releaseSnapshotView(blockHash: string): Promise<void> {

@@ -2,7 +2,7 @@ import 'mocha';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 const assert = require('assert');
-import {Transaction, RandomOutNode, TcpNode, staticPeeridIp, StaticOutNode, INode, BlockHeader, ErrorCode, initLogger, BaseNode, BAN_LEVEL, Receipt } from '../../src/core';
+import {Transaction, RandomOutNetwork, TcpNode, staticPeeridIp, StaticOutNode, INode, BlockHeader, ErrorCode, initLogger, Network, BAN_LEVEL, Receipt } from '../../src/core';
 import {FakeHeaderStorage} from '../fake/header_storage';
 
 process.on('unhandledRejection', (reason, p) => {
@@ -12,7 +12,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 describe('RandomNode', () => {
     let tcpnodes: INode[] = [];
-    let nodes: BaseNode[] = [];
+    let nodes: Network[] = [];
     let peerids: string[] = [];
     const logger = initLogger({loggerOptions: {console: true, level: 'error'}});
     const headerStorage = new FakeHeaderStorage();
@@ -32,19 +32,22 @@ describe('RandomNode', () => {
                     others.push(_pid);
                 }
             }
-            const tcpNode = new nodeType(others, {peerid: pid, host: '127.0.0.1', port: 10000 + i});
+            const tcpNode = new nodeType(others, {network: 'default', peerid: pid, host: '127.0.0.1', port: 10000 + i});
             tcpnodes.push(tcpNode);
-            nodes.push(new RandomOutNode({
+            const network = new RandomOutNetwork({
                 node: tcpNode,
-                dataDir: path.join(rootDir, i.toString()),
                 logger,
+                dataDir: path.join(rootDir, i.toString()),
                 headerStorage,
                 blockHeaderType: BlockHeader,
                 transactionType: Transaction,
                 receiptType: Receipt, 
+            });
+            nodes.push(network);
+            network.setInstanceOptions({
                 minOutbound: 5,
                 checkCycle: 500
-            }));
+            });
         }
     });
 

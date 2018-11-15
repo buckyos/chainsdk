@@ -68,17 +68,21 @@ export function registerHandler(handler: ValueHandler) {
         return MapToObject(v);
     });
     
-    handler.addViewMethod('getStoke', async (context: DposViewContext, params: any): Promise<BigNumber> => {
-        return await context.getStoke(params.address);
+    handler.addViewMethod('getStake', async (context: DposViewContext, params: any): Promise<BigNumber> => {
+        return await context.getStake(params.address);
     });
     
     handler.addViewMethod('getCandidates', async (context: DposViewContext, params: any): Promise<string[]> => {
         return await context.getCandidates();
     });
+
+    handler.addViewMethod('getMiners', async (context: DposViewContext, params: any): Promise<string[]> => {
+        return await context.getMiners();
+    });
     
     handler.addTX('transferTo', async (context: DposTransactionContext, params: any): Promise<ErrorCode> => {
         context.cost(context.fee);
-        return context.transferTo(params.to, context.value);
+        return await context.transferTo(params.to, context.value);
     });
     
     handler.addTX('vote', async (context: DposTransactionContext, params: any): Promise<ErrorCode> => {

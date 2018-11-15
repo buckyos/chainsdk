@@ -508,9 +508,14 @@ export class JsonStorage extends Storage {
     }
 
     public async messageDigest(): Promise<{ err: ErrorCode, value?: ByteString }> {
-        let buf = await fs.readFile(this.m_filePath);
-        let hash = digest.hash256(buf).toString('hex');
-        return { err: ErrorCode.RESULT_OK, value: hash };
+        try {
+            const raw = JSON.stringify(this.m_root, undefined, 4);
+            let hash = digest.hash256(Buffer.from(raw, 'utf8')).toString('hex');
+            return { err: ErrorCode.RESULT_OK, value: hash };
+        }   catch (e) {
+            this.m_logger.error('json storage messagedigest exception ', e);
+            return {err: ErrorCode.RESULT_EXCEPTION};
+        }
     }
 
     public async getReadableDataBase(name: string) {

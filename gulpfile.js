@@ -1,6 +1,6 @@
 const gulp = require("gulp");
 const ts = require("gulp-typescript");
-const sourcemaps = require("gulp-sourcemaps");
+const sourcemaps = require('gulp-sourcemaps');
 const tsProject = ts.createProject("tsconfig.json");
 const fs = require("fs-extra");
 
@@ -31,7 +31,6 @@ gulp.task("_publish", () => {
     let pkg = fs.readJSONSync("./package.json");
     pkg.main = "./src/client/index.js";
     pkg.types = "./src/client/index.d.ts";
-    pkg.repository.url = "https://github.com/buckyos/chainsdk";
     delete pkg.scripts;
     pkg.bin = {
         "chain_host": "./src/tool/host.js",
@@ -43,8 +42,3 @@ gulp.task("_publish", () => {
 });
 
 gulp.task("publish", ["build", "_publish"]);
-gulp.task("npm", () => {
-    fs.removeSync("./dist/blockchain-sdk/test/");
-    fs.removeSync("./dist/blockchain-sdk/demo/");
-    fs.copySync("./LICENSE", "./dist/blockchain-sdk/LICENSE");
-});

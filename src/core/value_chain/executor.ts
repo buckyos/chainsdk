@@ -97,6 +97,7 @@ export class ValueTransactionExecutor extends TransactionExecutor {
         let receipt: ValueReceipt = new ValueReceipt(); 
         let ve = new Context(kvBalance);
         if ((await ve.getBalance(fromAddress)).lt(nToValue)) {
+            this.m_logger.error(`methodexecutor failed for value not enough need ${nToValue.toString()} but ${(await ve.getBalance(fromAddress)).toString()} address=${this.m_tx.address}, hash=${this.m_tx.hash}`);
             receipt.returnCode = ErrorCode.RESULT_NOT_ENOUGH;
             receipt.transactionHash = this.m_tx.hash; 
             return {err: ErrorCode.RESULT_OK, receipt};
@@ -106,10 +107,12 @@ export class ValueTransactionExecutor extends TransactionExecutor {
 
         let work = await storage.beginTransaction();
         if (work.err) {
+            this.m_logger.error(`methodexecutor failed for beginTransaction failed,address=${this.m_tx.address}, hash=${this.m_tx.hash}`);
             return {err: work.err};
         }
-        let err = await ve.transferTo(fromAddress, ValueChain.sysAddress, nToValue);
+        let err = await ve.transferTo(fromAddress, ValueChain.sysAddress, (this.m_tx as ValueTransaction).value);
         if (err) {
+            this.m_logger.error(`methodexecutor failed for transferTo sysAddress failed,address=${this.m_tx.address}, hash=${this.m_tx.hash}`);
             await work.value!.rollback();
             return {err};
         }
@@ -117,7 +120,7 @@ export class ValueTransactionExecutor extends TransactionExecutor {
         receipt.cost = this.m_totalCost;
         assert(isNumber(receipt.returnCode), `invalid handler return code ${receipt.returnCode}`);
         if (!isNumber(receipt.returnCode)) {
-            this.m_logger.error(`methodexecutor failed for invalid handler return code type, return=`, receipt.returnCode);
+            this.m_logger.error(`methodexecutor failed for invalid handler return code type, return=${receipt.returnCode},address=${this.m_tx.address}, hash=${this.m_tx.hash}`);
             return {err: ErrorCode.RESULT_INVALID_PARAM};
         }
         receipt.transactionHash = this.m_tx.hash;

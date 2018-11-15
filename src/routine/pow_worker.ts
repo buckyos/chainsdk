@@ -1,7 +1,4 @@
-import * as consensus from './consensus';
-import {PowBlockHeader} from './block';
-import {BufferReader} from '../serializable';
-import {ErrorCode} from '../error_code';
+import {ErrorCode, PowBlockHeader, BufferReader} from '../core/';
 
 function _calcuteBlockHash(blockHeader: PowBlockHeader, nonceRange: { start: number, end: number }, nonce1Range: { start: number, end: number }) {
     // 这里做单线程的hash计算
@@ -44,10 +41,11 @@ function work(_param: any) {
     process.stdout.write(JSON.stringify({nonce: header.nonce, nonce1: header.nonce1}));
 }
 
-let param = JSON.parse(process.argv[2]);
-if (!param) {
-    process.stdout.write(`process argv error! ${process.argv[2]}`);
-    process.exit(1);
+if (require.main === module) {
+    let param = JSON.parse(process.argv[2]);
+    if (!param) {
+        process.stdout.write(`process argv error! ${process.argv[2]}`);
+        process.exit(1);
+    }
+    work(param);
 }
-
-work(param);

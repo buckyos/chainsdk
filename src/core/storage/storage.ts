@@ -98,9 +98,13 @@ export abstract class Storage extends IReadWritableStorage {
 
     protected abstract _createLogger(): StorageLogger;
 
-    public createLogger() {
+    public createLogger(logger?: StorageLogger) {
         if (!this.m_storageLogger) {
-            this.m_storageLogger = new LoggedStorage(this, this._createLogger());
+            if (!logger) {
+                logger = this._createLogger();
+                logger.init();
+            }
+            this.m_storageLogger = new LoggedStorage(this, logger);
         }
     }
 
@@ -151,6 +155,7 @@ export abstract class Storage extends IReadWritableStorage {
     public async remove(): Promise<ErrorCode> {
         await this.uninit();
         try {
+            this.m_logger.debug(`about to remove storage file `, this.m_filePath);
             fs.removeSync(this.m_filePath);
         } catch (e) {
             this.m_logger.error(`remove storage ${this.m_filePath} failed `, e);

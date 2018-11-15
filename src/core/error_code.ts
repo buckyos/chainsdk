@@ -41,6 +41,7 @@ export enum ErrorCode {
     RESULT_TX_FEE_NOT_ENOUGH = 39,
 
     RESULT_SKIPPED = 40,
+    RESULT_TX_ADD_TOO_FREQUENTLY = 41,
 
     RESULT_FORK_DETECTED = 50,
 
@@ -122,6 +123,8 @@ export function stringifyErrorCode(err: ErrorCode): string {
         return 'skipped';
     } else if (err === ErrorCode.RESULT_FORK_DETECTED) {
         return 'fork detected';
+    } else if (err === ErrorCode.RESULT_TX_ADD_TOO_FREQUENTLY) {
+        return 'add tx too frequently';
     } else if (err > ErrorCode.RESULT_USER_DEFINE) {
         return `user defined errorcode ${err}`;
     } else {

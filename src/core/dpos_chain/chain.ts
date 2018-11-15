@@ -13,7 +13,7 @@ export type DposTransactionContext = {
     unmortgage: (from: string, amount: BigNumber) => Promise<ErrorCode>;
     register: (from: string) => Promise<ErrorCode>;
     getVote: () => Promise<Map<string, BigNumber> >;
-    getStoke: (address: string) => Promise<BigNumber>;
+    getStake: (address: string) => Promise<BigNumber>;
     getCandidates: () => Promise<string[]>;
     getMiners(): Promise<string[]>;
 } & ValueTransactionContext;
@@ -24,14 +24,14 @@ export type DposEventContext = {
     unmortgage: (from: string, amount: BigNumber) => Promise<ErrorCode>;
     register: (from: string) => Promise<ErrorCode>;
     getVote: () => Promise<Map<string, BigNumber> >;
-    getStoke: (address: string) => Promise<BigNumber>;
+    getStake: (address: string) => Promise<BigNumber>;
     getCandidates: () => Promise<string[]>;
     getMiners(): Promise<string[]>;
 } & ValueEventContext;
 
 export type DposViewContext = {
     getVote: () => Promise<Map<string, BigNumber> >;
-    getStoke: (address: string) => Promise<BigNumber>;
+    getStake: (address: string) => Promise<BigNumber>;
     getCandidates: () => Promise<string[]>;
     getMiners(): Promise<string[]>;
 } & ValueViewContext;
@@ -49,6 +49,10 @@ export class DposChain extends ValueChain {
     // DPOS中，只广播tipheader
     protected get _broadcastDepth() {
         return 0;
+    }
+
+    protected get _ignoreVerify() {
+        return true;
     }
 
     public async initComponents(options?: {readonly?: boolean}): Promise<ErrorCode> {
@@ -125,12 +129,12 @@ export class DposChain extends ValueChain {
             }
             return gvr.vote!;
         };
-        externalContext.getStoke = async (address: string): Promise<BigNumber> => {
-            let gsr = await de.getStoke(address);
+        externalContext.getStake = async (address: string): Promise<BigNumber> => {
+            let gsr = await de.getStake(address);
             if (gsr.err) {
                 throw new Error();
             }
-            return gsr.stoke!;
+            return gsr.stake!;
         };
         externalContext.getCandidates = async (): Promise<string[]> => {
             let gc = await de.getCandidates();
@@ -171,12 +175,12 @@ export class DposChain extends ValueChain {
             }
             return gvr.vote!;
         };
-        externalContext.getStoke = async (address: string): Promise<BigNumber> => {
-            let gsr = await de.getStoke(address);
+        externalContext.getStake = async (address: string): Promise<BigNumber> => {
+            let gsr = await de.getStake(address);
             if (gsr.err) {
                 throw new Error();
             }
-            return gsr.stoke!;
+            return gsr.stake!;
         };
         externalContext.getCandidates = async (): Promise<string[]> => {
             let gc = await de.getCandidates();

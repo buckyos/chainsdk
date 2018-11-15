@@ -1,26 +1,29 @@
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import {ErrorCode, stringifyErrorCode} from './error_code';
 import {BigNumber} from 'bignumber.js';
+import { TmpManager } from './lib/tmp_manager';
 import {ChainCreator} from './chain_creator';
 import {JsonStorage} from './storage_json/storage';
+import {SqliteStorage} from './storage_sqlite/storage';
 import { LoggerInstance } from './lib/logger_util';
 import {Chain, Block, Transaction, BlockHeader, Receipt, BlockHeightListener} from './chain';
 import {ValueTransaction, ValueBlockHeader, ValueBlockExecutor, ValueReceipt} from './value_chain';
 import {createKeyPair, addressFromSecretKey} from './address';
-import {StorageDumpSnapshotManager, StorageManager, StorageLogSnapshotManager} from './storage';
-import { isArray } from 'util';
-import { SqliteStorage } from './storage_sqlite/storage';
+import {Storage, StorageDumpSnapshotManager, StorageManager, StorageLogSnapshotManager} from './storage';
+import { isArray, isNullOrUndefined } from 'util';
 
 export class ValueChainDebugSession {
-    constructor(private readonly debuger: ValueMemoryDebuger) {
+    constructor(private readonly debuger: ValueChainDebuger) {
         
     }
     private m_dumpSnapshotManager?: StorageDumpSnapshotManager;
     private m_storageManager?: StorageManager;
-    async init(storageDir: string): Promise<ErrorCode> {
+    async init(options: {storageDir: string}): Promise<ErrorCode> {
         const chain = this.debuger.chain;
         const dumpSnapshotManager = new StorageDumpSnapshotManager({
             logger: chain.logger,
-            path: storageDir
+            path: options.storageDir
         });
         this.m_dumpSnapshotManager = dumpSnapshotManager;
         const snapshotManager = new StorageLogSnapshotManager({
@@ -30,14 +33,24 @@ export class ValueChainDebugSession {
             logger: chain.logger,
             dumpSnapshotManager
         });
+        const tmpManager = new TmpManager({
+            root: options.storageDir, 
+            logger: chain.logger
+        });
+        let err = tmpManager.init({clean: true});
+        if (err) {
+            chain.logger.error(`ValueChainDebugSession init tmpManager init failed `, stringifyErrorCode(err));
+            return err;
+        }
         const storageManager = new StorageManager({
-            path: storageDir,
+            tmpManager, 
+            path: options.storageDir,
             storageType: JsonStorage,
             logger: chain.logger,
             snapshotManager
         });
         this.m_storageManager = storageManager;
-        let err = await this.m_storageManager.init();
+        err = await this.m_storageManager.init();
         if (err) {
             chain.logger.error(`ValueChainDebugSession init storageManager init failed `, stringifyErrorCode(err));
             return err;
@@ -133,12 +146,12 @@ export class ValueChainDebugSession {
 }
 
 export class ValueIndependDebugSession {
-    private m_storage?: JsonStorage;
+    private m_storage?: Storage;
     private m_curHeader?: ValueBlockHeader;
     private m_accounts?: Buffer[];
     private m_interval?: number;
     private m_fakeNonces: Map<string, number>;
-    constructor(private readonly debuger: ValueMemoryDebuger) {
+    constructor(private readonly debuger: ValueChainDebuger) {
         this.m_fakeNonces = new Map();
     }
 
@@ -147,9 +160,19 @@ export class ValueIndependDebugSession {
         accounts: Buffer[] | number, 
         coinbase: number,
         interval: number,
-        preBalance?: BigNumber
+        preBalance?: BigNumber,
+        memoryStorage?: boolean,
+        storageDir?: string
     }): Promise<ErrorCode> {
-        const csr = await this.debuger.createStorage();
+        const storageOptions = Object.create(null);
+        storageOptions.memory = options.memoryStorage;
+        if (!(isNullOrUndefined(options.memoryStorage) || options.memoryStorage)) {
+            const storageDir = options.storageDir!;
+            fs.ensureDirSync(storageDir);
+            const storagePath = path.join(storageDir, `${Date.now()}`);
+            storageOptions.path = storagePath;
+        }
+        const csr = await this.debuger.createStorage(storageOptions);
         if (csr.err) {
             return csr.err;
         }
@@ -198,6 +221,14 @@ export class ValueIndependDebugSession {
         return ErrorCode.RESULT_OK;
     }
 
+    get curHeader(): ValueBlockHeader {
+        return this.m_curHeader!;
+    }
+
+    get storage(): Storage {
+        return this.m_storage!;
+    }
+
     async updateHeightTo(height: number, coinbase: number, events?: boolean): Promise<ErrorCode> {
         if (height <= this.m_curHeader!.number) {
             this.debuger.chain.logger.error(`updateHeightTo ${height} failed for current height ${this.m_curHeader!.number} is larger`); 
@@ -226,7 +257,7 @@ export class ValueIndependDebugSession {
         return ErrorCode.RESULT_OK;
     }
 
-    transaction(options: {caller: number|Buffer, method: string, input: any, value: BigNumber, fee: BigNumber}): Promise<{err: ErrorCode, receipt?: Receipt}> {
+    createTransaction(options: {caller: number|Buffer, method: string, input: any, value: BigNumber, fee: BigNumber, nonce?: number}): ValueTransaction {
         const tx = new ValueTransaction();
         tx.fee = new BigNumber(0);
         tx.value = new BigNumber(options.value);
@@ -239,11 +270,24 @@ export class ValueIndependDebugSession {
         } else {
             pk = this.m_accounts![options.caller]!;
         }
-        let addr = addressFromSecretKey(pk)!;
-        tx.nonce = this.m_fakeNonces.has(addr) ? this.m_fakeNonces.get(addr)! : 0;
+        tx.nonce = isNullOrUndefined(options.nonce) ? 0 : options.nonce;
         tx.sign(pk);
-        this.m_fakeNonces.set(addr, tx.nonce + 1);
-        
+        return tx;
+    }
+
+    transaction(options: {caller: number|Buffer, method: string, input: any, value: BigNumber, fee: BigNumber, nonce?: number}): Promise<{err: ErrorCode, receipt?: Receipt}> {
+        let pk: Buffer;
+        if (Buffer.isBuffer(options.caller)) {
+            pk = options.caller;
+        } else {
+            pk = this.m_accounts![options.caller]!;
+        }
+        let addr = addressFromSecretKey(pk)!;
+        const nonce = this.m_fakeNonces.has(addr) ? this.m_fakeNonces.get(addr)! : 0;
+        this.m_fakeNonces.set(addr, nonce + 1);
+        const txop = Object.create(options);
+        txop.nonce = nonce;
+        const tx = this.createTransaction(txop);
         return this.debuger.debugTransaction(this.m_storage!, this.m_curHeader!, tx);
     }
 
@@ -260,16 +304,26 @@ export class ValueIndependDebugSession {
     }
 }
 
-class MemoryDebuger {
+class ChainDebuger {
     constructor(public readonly chain: Chain, protected readonly logger: LoggerInstance) {
 
     }
 
-    async createStorage(): Promise<{err: ErrorCode, storage?: JsonStorage}> {
-        const storage = new JsonStorage({
-            filePath: '',
-            logger: this.logger
-        });
+    async createStorage(options: {memory?: boolean, path?: string}): Promise<{err: ErrorCode, storage?: Storage}> {
+        const inMemory = (isNullOrUndefined(options.memory) || options.memory);
+        let storage: Storage;
+        if (inMemory) {
+            storage = new JsonStorage({
+                filePath: '',
+                logger: this.logger
+            });
+        } else {
+            storage = new SqliteStorage({
+                filePath: options.path!,
+                logger: this.logger
+            });
+        }
+        
         const err = await storage.init();
         if (err) {
             this.chain.logger.error(`init storage failed `, stringifyErrorCode(err));
@@ -279,7 +333,7 @@ class MemoryDebuger {
         return {err: ErrorCode.RESULT_OK, storage};
     }
 
-    async debugTransaction(storage: JsonStorage, header: BlockHeader, tx: Transaction): Promise<{err: ErrorCode, receipt?: Receipt}> {
+    async debugTransaction(storage: Storage, header: BlockHeader, tx: Transaction): Promise<{err: ErrorCode, receipt?: Receipt}> {
         const block = this.chain.newBlock(header);
         
         const nber = await this.chain.newBlockExecutor(block, storage);
@@ -294,7 +348,7 @@ class MemoryDebuger {
         return {err: ErrorCode.RESULT_OK, receipt: etr.receipt};
     }
 
-    async debugBlockEvent(storage: JsonStorage, header: BlockHeader, options: {
+    async debugBlockEvent(storage: Storage, header: BlockHeader, options: {
             listener?: BlockHeightListener,
             preBlock?: boolean,
             postBlock?: boolean
@@ -325,7 +379,7 @@ class MemoryDebuger {
         }
     }
 
-    async debugView(storage: JsonStorage, header: BlockHeader, method: string, params: any): Promise<{err: ErrorCode, value?: any}> {
+    async debugView(storage: Storage, header: BlockHeader, method: string, params: any): Promise<{err: ErrorCode, value?: any}> {
         const nver = await this.chain.newViewExecutor(header, storage, method, params);
 
         if (nver.err) {
@@ -335,7 +389,7 @@ class MemoryDebuger {
         return nver.executor!.execute();
     }
 
-    async debugBlock(storage: JsonStorage, block: Block): Promise<{err: ErrorCode}> {
+    async debugBlock(storage: Storage, block: Block): Promise<{err: ErrorCode}> {
         const nber = await this.chain.newBlockExecutor(block, storage);
         if (nber.err) {
             return {err: nber.err};
@@ -346,8 +400,8 @@ class MemoryDebuger {
     }
 }
 
-export class ValueMemoryDebuger extends MemoryDebuger {
-    async debugMinerWageEvent(storage: JsonStorage, header: BlockHeader): Promise<{err: ErrorCode}> {
+export class ValueChainDebuger extends ChainDebuger {
+    async debugMinerWageEvent(storage: Storage, header: BlockHeader): Promise<{err: ErrorCode}> {
         const block = this.chain.newBlock(header);
         
         const nber = await this.chain.newBlockExecutor(block, storage);
@@ -370,7 +424,7 @@ export class ValueMemoryDebuger extends MemoryDebuger {
             return {err};
         }
         const session = new ValueChainDebugSession(this);
-        err = await session.init(storageDir);
+        err = await session.init({storageDir});
         if (err) {
             return {err};
         }
@@ -378,11 +432,11 @@ export class ValueMemoryDebuger extends MemoryDebuger {
     }
 }
 
-export async function createValueDebuger(chainCreator: ChainCreator, dataDir: string): Promise<{err: ErrorCode, debuger?: ValueMemoryDebuger}> {
+export async function createValueDebuger(chainCreator: ChainCreator, dataDir: string): Promise<{err: ErrorCode, debuger?: ValueChainDebuger}> {
     const ccir = await chainCreator.createChainInstance(dataDir, {readonly: true, initComponents: false});
     if (ccir.err) {
         chainCreator.logger.error(`create chain instance from ${dataDir} failed `, stringifyErrorCode(ccir.err));
         return {err: ccir.err};
     }
-    return {err: ErrorCode.RESULT_OK, debuger: new ValueMemoryDebuger(ccir.chain!, chainCreator.logger)};
+    return {err: ErrorCode.RESULT_OK, debuger: new ValueChainDebuger(ccir.chain!, chainCreator.logger)};
 }

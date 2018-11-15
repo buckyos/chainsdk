@@ -47,7 +47,7 @@ export class RPCServer extends EventEmitter {
                 });
                 req.on('end', () => {
                     let reqObj = JSON.parse(jsonData);
-                    console.info(`RPCServer emit request ${reqObj.funName}, params ${JSON.stringify(reqObj.args)}`);
+                    // console.info(`RPCServer emit request ${reqObj.funName}, params ${JSON.stringify(reqObj.args)}`);
                     if (!this.emit(reqObj.funName, reqObj.args, resp)) {
                         resp.writeHead(404);
                         resp.end();

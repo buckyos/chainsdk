@@ -1,5 +1,5 @@
 import {ErrorCode} from '../error_code';
-import {Miner, Block, Storage, Chain, MinerInstanceOptions, INode, ChainContructOptions} from '../chain';
+import {Miner, Block, Storage, Chain, MinerInstanceOptions, INode, ChainContructOptions, NetworkCreator} from '../chain';
 import {ValueBlockHeader} from './block';
 import {BigNumber} from 'bignumber.js';
 import {ValueChain} from './chain';
@@ -34,17 +34,20 @@ export class ValueMiner extends Miner {
         return this.m_chain as ValueChain;
     }
 
-    public parseInstanceOptions(node: INode, instanceOptions: Map<string, any>): {err: ErrorCode, value?: any} {
-        let {err, value} = super.parseInstanceOptions(node, instanceOptions);
+    public parseInstanceOptions(options: {
+        parsed: any, 
+        origin: Map<string, any>
+    }): {err: ErrorCode, value?: any} {
+        let {err, value} = super.parseInstanceOptions(options);
         if (err) {
             return {err};
         }
-        value.coinbase = instanceOptions.get('coinbase');
-        if (!instanceOptions.has('feelimit')) {
+        value.coinbase = options.origin.get('coinbase');
+        if (!options.origin.has('feelimit')) {
             console.log(`not exist 'feelimit' option in command`);
             return {err: ErrorCode.RESULT_PARSE_ERROR};
         }
-        value.feelimit = new BigNumber(instanceOptions.get('feelimit'));
+        value.feelimit = new BigNumber(options.origin.get('feelimit'));
         return {err: ErrorCode.RESULT_OK, value};
     }
 

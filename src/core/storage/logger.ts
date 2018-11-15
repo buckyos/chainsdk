@@ -20,8 +20,6 @@ export class LoggedStorage {
     constructor(storage: Storage, logger: StorageLogger) {
         this.m_storage = storage;
         this.m_logger = logger;
-
-        this.m_logger.init();
         this._wrapStorage();
     }
 
@@ -122,6 +120,13 @@ export class LoggedStorage {
             kv.hmset = async (key: string, fields: string[], values: any[]): Promise<{ err: ErrorCode }> => {
                 await logger.hmset(key, fields, values);
                 return await proto.bind(kv)(key, fields, values);
+            };
+        }
+        {
+            let proto = kv.hdel;
+            kv.hdel = async (key: string, field: string): Promise<{err: ErrorCode}> => {
+                await logger.hdel(key, field);
+                return await proto.bind(kv)(key, field);
             };
         }
         {

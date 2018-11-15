@@ -5,9 +5,7 @@ import {DbftBlockHeader} from './block';
 import {DbftContext} from './context';
 import {DbftBlockExecutor} from './executor';
 import * as ValueContext from '../value_chain/context';
-import {LoggerOptions} from '../lib/logger_util';
 import {DbftHeaderStorage} from './header_storage'; 
-import {ValidatorsNode} from './validators_node';
 
 export type DbftTransactionContext = {
     register: (caller: string, address: string, sign: string) => Promise<ErrorCode>;
@@ -29,6 +27,16 @@ export class DbftChain extends ValueChain {
     
     constructor(options: ChainContructOptions) {
         super(options);
+    }
+
+    // 都不需要验证内容
+    protected get _ignoreVerify(): boolean {
+        return true;
+    }
+
+    // 不会分叉
+    protected get _morkSnapshot(): boolean {
+        return false;
     }
 
     public async newBlockExecutor(block: Block, storage: Storage): Promise<{err: ErrorCode, executor?: BlockExecutor}> {

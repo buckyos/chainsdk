@@ -3,13 +3,20 @@ import * as assert from 'assert';
 import { ErrorCode } from '../error_code';
 import { addressFromSecretKey } from '../address';
 
-import {ValueMiner, Chain, Block, Storage, ValueMinerInstanceOptions, INode} from '../value_chain';
+import {ValueMiner, Chain, Block, Storage, ValueMinerInstanceOptions, NetworkCreator} from '../value_chain';
 import { DposBlockHeader } from './block';
 import {DposChain} from './chain';
 import * as consensus from './consensus';
 import { LoggerOptions } from '../lib/logger_util';
+import * as Address from '../address';
 
 export type DposMinerInstanceOptions = {secret: Buffer} & ValueMinerInstanceOptions;
+
+class InnerChain extends DposChain {
+    protected get _ignoreVerify() {
+        return false;
+    }
+}
 
 export class DposMiner extends ValueMiner {
     private m_secret?: Buffer;
@@ -25,19 +32,22 @@ export class DposMiner extends ValueMiner {
     }
 
     protected _chainInstance(): Chain {
-        return new DposChain(this.m_constructOptions);
+        return new InnerChain(this.m_constructOptions);
     }
 
-    public parseInstanceOptions(node: INode, instanceOptions: Map<string, any>): {err: ErrorCode, value?: any} {
-        let {err, value} = super.parseInstanceOptions(node, instanceOptions);
+    public parseInstanceOptions(options: {
+        parsed: any, 
+        origin: Map<string, any>
+    }): {err: ErrorCode, value?: any} {
+        let {err, value} = super.parseInstanceOptions(options);
         if (err) {
             return {err};
         }
-        if (!instanceOptions.get('minerSecret')) {
+        if (!options.origin.get('minerSecret')) {
             this.m_logger.error(`invalid instance options not minerSecret`);
             return {err: ErrorCode.RESULT_INVALID_PARAM};
         }
-        value.secret = Buffer.from(instanceOptions.get('minerSecret'), 'hex');
+        value.secret = Buffer.from(options.origin.get('minerSecret'), 'hex');
         return {err: ErrorCode.RESULT_OK, value};
     }
     
@@ -84,6 +94,7 @@ export class DposMiner extends ValueMiner {
             let blockHeader = new DposBlockHeader();
             blockHeader.setPreBlock(tip);
             blockHeader.timestamp = now;
+            blockHeader.pubkey = (Address.publicKeyFromSecretKey(this.m_secret!) as Buffer);
             let dmr = await blockHeader.getDueMiner(this.m_chain as Chain);
             if (dmr.err) {
                 return ;
@@ -103,7 +114,7 @@ export class DposMiner extends ValueMiner {
     
     protected async _mineBlock(block: Block): Promise<ErrorCode> {
         // 只需要给block签名
-        this.m_logger.info(`${this.peerid} create block, sign ${this.m_address}`);
+        this.m_logger.info(`create block, sign ${this.m_address}`);
         (block.header as DposBlockHeader).signBlock(this.m_secret!);
         block.header.updateHash();
         return ErrorCode.RESULT_OK;

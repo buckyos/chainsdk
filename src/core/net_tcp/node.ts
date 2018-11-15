@@ -2,16 +2,14 @@ import {ErrorCode} from '../error_code';
 import {Server, Socket} from 'net';
 import {IConnection, NodeConnection, INode} from '../net';
 import {TcpConnection} from './connection';
-const assert = require('assert');
-import { read } from 'fs-extra';
 import { LoggerOptions } from '../lib/logger_util';
 
 export class TcpNode extends INode {
     private m_options: any;
     private m_server: Server;
 
-    constructor(options: {peerid: string, host: string, port: number} & LoggerOptions) {
-        super({peerid: options.peerid, logger: options.logger, loggerOptions: options.loggerOptions});
+    constructor(options: {network: string, peerid: string, host: string, port: number} & LoggerOptions) {
+        super({network: options.network, peerid: options.peerid, logger: options.logger, loggerOptions: options.loggerOptions});
         this.m_options = Object.create(null);
         Object.assign(this.m_options, options);
         this.m_server = new Server();
@@ -70,7 +68,8 @@ export class TcpNode extends INode {
                 this.m_server.on('connection', (tcp: Socket) => {
                     let connNodeType = this._nodeConnectionType();
                     let connNode: any = (new connNodeType(this, { socket: tcp, remote: `${tcp.remoteAddress}:${tcp.remotePort}` }));
-                    tcp.on('error', (e) => {this.emit('error', connNode, ErrorCode.RESULT_EXCEPTION);
+                    tcp.on('error', (e) => {
+                        this.emit('error', connNode, ErrorCode.RESULT_EXCEPTION);
                 });
                     this._onInbound(connNode);
                 });
@@ -78,6 +77,7 @@ export class TcpNode extends INode {
             });
             this.m_server.once('error', (e) => {
                 this.m_server.removeAllListeners('listening');
+                this.m_logger.error(`tcp listen on ${this.m_options.host}:${this.m_options.port} error `, e);
                 resolve(ErrorCode.RESULT_EXCEPTION);
             });
         });

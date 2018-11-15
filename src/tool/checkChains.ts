@@ -1,4 +1,7 @@
-import { ChainClient, initLogger } from '../client';
+import { ChainClient, initLogger, ChainClientOptions, HeaderStorage, BlockHeader, Chain, ErrorCode, DposBlockHeader, PowBlockHeader, DbftBlockHeader } from '../client';
+import * as sqlite from 'sqlite';
+import * as sqlite3 from 'sqlite3';
+import * as fs from 'fs-extra';
 
 let mainpeer: string|undefined;
 let mainclient: ChainClient|undefined;
@@ -36,6 +39,50 @@ class PeerHelper {
 
     getLatestHeight() {
         return this.m_latest;
+    }
+}
+
+class SqliteChainClient extends ChainClient {
+    private m_headerStorage?: HeaderStorage;
+    private m_db?: sqlite.Database;
+    private m_dataDir: string;
+    constructor(options: ChainClientOptions) {
+        super(options);
+        this.m_dataDir = options.host;
+        
+    }
+
+    private async init() {
+        if (!this.m_headerStorage) {
+            this.m_db = await sqlite.open(this.m_dataDir + '/' + Chain.s_dbFile, {mode: sqlite3.OPEN_READONLY});
+            let config = fs.readJSONSync(this.m_dataDir + '/config.json');
+            let blockHeaderType = BlockHeader;
+            switch (config.type.consensus) {
+                case 'dpos':
+                    blockHeaderType = DposBlockHeader;
+                    break;
+                case 'pow':
+                    blockHeaderType = PowBlockHeader;
+                    break;
+                case 'dbft':
+                    blockHeaderType = DbftBlockHeader;
+                default:
+                    break;
+            }
+            this.m_headerStorage = new HeaderStorage({
+                logger: this.m_logger!,
+                blockHeaderType,
+                db: this.m_db!,
+                blockStorage: undefined!,
+                readonly: true
+            });
+        }
+    }
+
+    async getBlock(params: {which: string|number|'lastest', transactions?: boolean}): Promise<{err: ErrorCode, block?: any, txs?: any}> {
+        await this.init();
+        let cr = await this.m_headerStorage!.getHeader(params.which);
+        return {err: cr.err, block: cr.header};
     }
 }
 
@@ -86,9 +133,9 @@ async function main() {
         let [name, host, port] = peer.split(':');
         if (!mainpeer) {
             mainpeer = name;
-            mainclient = new ChainClient({host, port: parseInt(port), logger});
+            mainclient = port ? new ChainClient({host, port: parseInt(port), logger}) : new SqliteChainClient({host, port: 0, logger});
         } else {
-            await checkDiff({name: mainpeer, client: mainclient!}, {name, client: new ChainClient({host, port: parseInt(port), logger})});
+            await checkDiff({name: mainpeer, client: mainclient!}, {name, client: port ? new ChainClient({host, port: parseInt(port), logger}) : new SqliteChainClient({host, port: 0, logger})});
         }
     }
 }

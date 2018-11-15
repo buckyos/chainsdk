@@ -25,8 +25,26 @@ export function instance(superClass: new(...args: any[]) => BlockHeader) {
             return this.m_pubkey;
         }
 
+        set pubkey(k: Buffer) {
+            this.m_pubkey = k;
+        }
+
         get miner(): string {
             return Address.addressFromPublicKey(this.m_pubkey)!;
+        }
+
+        public encode(writer: BufferWriter): ErrorCode {
+            try {
+                writer.writeBytes(this.m_sign);
+            } catch (e) {
+                return ErrorCode.RESULT_INVALID_FORMAT;
+            }
+            return super.encode(writer);
+        }
+    
+        public decode(reader: BufferReader): ErrorCode {
+            this.m_sign = reader.readBytes(64);
+            return super.decode(reader);
         }
 
         protected _encodeHashContent(writer: BufferWriter): ErrorCode {
@@ -36,7 +54,6 @@ export function instance(superClass: new(...args: any[]) => BlockHeader) {
             }
             try {
                 writer.writeBytes(this.m_pubkey);
-                writer.writeBytes(this.m_sign);
             } catch (e) {
                 return ErrorCode.RESULT_INVALID_FORMAT;
             }
@@ -50,7 +67,6 @@ export function instance(superClass: new(...args: any[]) => BlockHeader) {
                 return err;
             }
             this.m_pubkey = reader.readBytes(33);
-            this.m_sign = reader.readBytes(64);
             return ErrorCode.RESULT_OK;
         }
 

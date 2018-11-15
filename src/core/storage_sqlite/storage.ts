@@ -552,10 +552,23 @@ export class SqliteStorage extends Storage {
         try {
             this.m_db = await sqlite.open(this.m_filePath, options);
         } catch (e) {
+            this.m_logger.error(`open sqlite database file ${this.m_filePath} failed `, e);
             err = ErrorCode.RESULT_EXCEPTION;
         }
-        // await this.m_db.migrate({ force: 'latest', migrationsPath: path.join(__dirname, 'migrations') });
-       
+
+        if (!err) {
+            this.m_isInit = true;
+        }
+
+        try {
+            this.m_db!.run('PRAGMA journal_mode = MEMORY');
+            this.m_db!.run('PRAGMA synchronous = OFF');
+            this.m_db!.run('PRAGMA locking_mode = EXCLUSIVE');
+        } catch (e) {
+            this.m_logger.error(`pragma some options on sqlite database file ${this.m_filePath} failed `, e);
+            err = ErrorCode.RESULT_EXCEPTION;
+        }
+        
         if (!err) {
             this.m_isInit = true;
         }

@@ -75,7 +75,7 @@ export class TransactionExecutor extends BaseExecutor {
            nonce = nonceInfo.value as number;
         }
         if (tx.nonce !== nonce + 1) {
-            this.m_logger.error(`methodexecutor, _dealNonce, nonce error,nonce should ${nonce + 1}, but ${tx.nonce}, txhash=${tx.hash}`);
+            this.m_logger.error(`methodexecutor, _dealNonce, nonce error,nonce should ${nonce + 1}, but ${tx.nonce}, txhash=${tx.hash} address=${tx.address}`);
             return ErrorCode.RESULT_ERROR_NONCE_IN_TX;
         }
         await kvr.kv!.set(tx.address!, tx.nonce);
@@ -122,7 +122,7 @@ export class TransactionExecutor extends BaseExecutor {
 
     protected async _execute(env: any, input: any): Promise<ErrorCode> {
         try {
-            this.m_logger.info(`will execute tx ${this.m_tx.hash}: ${this.m_tx.method}, params ${JSON.stringify(this.m_tx.input)}`);
+            this.m_logger.info(`will execute tx ${this.m_tx.hash}: ${this.m_tx.method},from ${this.m_tx.address}, params ${JSON.stringify(this.m_tx.input)}`);
             return await this.m_listener(env, this.m_tx.input);
         } catch (e) {
             this.m_logger.error(`execute method linstener e=`, e.stack);

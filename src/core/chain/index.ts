@@ -5,3 +5,6 @@ export * from '../block';
 export * from './pending';
 export * from './chain';
 export * from './miner';
+export * from './executor_routine';
+export * from './inprocess_routine';
+export * from './interprocess_routine';

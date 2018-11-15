@@ -6,6 +6,7 @@ export class TcpConnection extends IConnection {
     private m_socket: Socket;
     private m_pending: boolean;
     private m_remote: string;
+    private m_network?: string;
     protected m_nTimeDelta: number = 0;
     constructor(options: {socket: Socket, remote: string}) {
         super();
@@ -61,12 +62,20 @@ export class TcpConnection extends IConnection {
         return Promise.resolve();
     }
 
-    getRemote(): string {
+    get remote(): string {
         return this.m_remote;
     }
 
-    setRemote(s: string) {
+    set remote(s: string) {
         this.m_remote = s;
+    }
+
+    get network(): string {
+        return this.m_network!;
+    }
+
+    set network(s: string) {
+        this.m_network = s;
     }
 
     getTimeDelta(): number {
