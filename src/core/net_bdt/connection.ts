@@ -42,6 +42,9 @@ export class BdtConnection extends IConnection {
     
     close(): Promise<ErrorCode> {
         if (this.m_bdt_connection) {
+            this.m_bdt_connection.removeAllListeners('drain');
+            this.m_bdt_connection.removeAllListeners('data');
+            this.m_bdt_connection.removeAllListeners('error');
             this.m_bdt_connection.close();
             delete this.m_bdt_connection;
         }
@@ -49,6 +52,9 @@ export class BdtConnection extends IConnection {
     }
     destroy(): Promise<void> {
         if (this.m_bdt_connection) {
+            this.m_bdt_connection.removeAllListeners('drain');
+            this.m_bdt_connection.removeAllListeners('data');
+            this.m_bdt_connection.removeAllListeners('error');
             this.m_bdt_connection.close(true);
             delete this.m_bdt_connection;
         }

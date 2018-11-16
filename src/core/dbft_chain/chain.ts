@@ -8,13 +8,13 @@ import * as ValueContext from '../value_chain/context';
 import {DbftHeaderStorage} from './header_storage'; 
 
 export type DbftTransactionContext = {
-    register: (caller: string, address: string, sign: string) => Promise<ErrorCode>;
-    unregister: (caller: string, address: string, sign: string) => Promise<ErrorCode>;
+    register: (caller: string, address: string) => Promise<ErrorCode>;
+    unregister: (caller: string, address: string) => Promise<ErrorCode>;
 } & ValueTransactionContext;
 
 export type DbftEventContext = {
-    register: (caller: string, address: string, sign: string) => Promise<ErrorCode>;
-    unregister: (caller: string, address: string, sign: string) => Promise<ErrorCode>;
+    register: (caller: string, address: string) => Promise<ErrorCode>;
+    unregister: (caller: string, address: string) => Promise<ErrorCode>;
 } & ValueEventContext;
 
 export type DbftViewContext = {
@@ -52,11 +52,11 @@ export class DbftChain extends ValueChain {
         };
         
         let context = new DbftContext(storage, this.globalOptions, this.logger);
-        externalContext.register = async (caller: string, address: string, sign: string): Promise<ErrorCode> => {
-           return await context.registerToCandidate(caller, block.number, address, sign);
+        externalContext.register = async (caller: string, address: string): Promise<ErrorCode> => {
+           return await context.registerToCandidate(caller, block.number, address);
         };
-        externalContext.unregister = async (caller: string, address: string, sign: string): Promise<ErrorCode> => {
-            return await context.unRegisterFromCandidate(caller, address, sign);
+        externalContext.unregister = async (caller: string, address: string): Promise<ErrorCode> => {
+            return await context.unRegisterFromCandidate(caller, address);
         };
 
         externalContext.getMiners = async (): Promise<string[]> => {

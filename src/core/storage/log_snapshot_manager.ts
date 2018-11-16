@@ -80,6 +80,7 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
 
         let logger = from.storageLogger;
         if (logger) {
+            this.m_logger.debug(`begin write redo log ${blockHash}`);
             let writer = new BufferWriter();
             logger.finish();
             let err = logger.encode(writer);
@@ -87,6 +88,8 @@ export class StorageLogSnapshotManager implements IStorageSnapshotManager {
                 this.m_logger.error(`encode redo logger failed `, blockHash);
             }
             fs.writeFileSync(this.getLogPath(blockHash), writer.render());
+        } else {
+            this.m_logger.debug(`ignore write redo log ${blockHash} for redo log missing`);
         }
         this.m_snapshots.set(blockHash, { ref: 0 });
         return csr;

@@ -118,15 +118,17 @@ export class DbftContext {
         return {err: ErrorCode.RESULT_OK, isminer: miners.has(address)};
     }
 
-    async registerToCandidate(superAdmin: string, blockheight: number, address: string, sign: string): Promise<ErrorCode> {
+    async registerToCandidate(superAdmin: string, blockheight: number, address: string): Promise<ErrorCode> {
         if (superAdmin !== this.globalOptions.superAdmin) {
             this.logger.error(`registerToCandidate superAdmin error should ${this.globalOptions.superAdmin} but ${superAdmin} address=${address}`);
             return ErrorCode.RESULT_NOT_SUPPORT;
         }
+        /*
         if (!libAddress.verify(Buffer.from(digest.md5(Buffer.from(address, 'hex')).toString('hex')), Buffer.from(sign, 'hex'), Buffer.from(this.globalOptions.systemPubkey, 'hex'))) {
             this.logger.error(`registerToCandidate superAdmin sign error,address=${address}`);
             return ErrorCode.RESULT_NOT_SUPPORT;
         }
+        */
         let storage = this.storage as IReadWritableStorage;
         let dbr = await storage.getReadWritableDatabase(Chain.dbSystem);
         if (dbr.err) {
@@ -145,15 +147,17 @@ export class DbftContext {
         return err;
     }
 
-    async unRegisterFromCandidate(superAdmin: string, address: string, sign: string): Promise<ErrorCode> {
+    async unRegisterFromCandidate(superAdmin: string, address: string): Promise<ErrorCode> {
         if (superAdmin !== this.globalOptions.superAdmin) {
             this.logger.error(`registerToCandidate superadmin error should ${this.globalOptions.superAdmin} but ${superAdmin} address=${address}`);
             return ErrorCode.RESULT_NOT_SUPPORT;
         }
+        /*
         if (!libAddress.verify(Buffer.from(digest.md5(Buffer.from(address, 'hex')).toString('hex')), Buffer.from(sign, 'hex'), Buffer.from(this.globalOptions.systemPubkey, 'hex'))) {
             this.logger.error(`registerToCandidate superadmin sign error,address=${address}`);
             return ErrorCode.RESULT_NOT_SUPPORT;
         }
+        */
         
         let storage = this.storage as IReadWritableStorage;
         let dbr = await storage.getReadWritableDatabase(Chain.dbSystem);

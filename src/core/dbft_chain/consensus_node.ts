@@ -171,12 +171,7 @@ export class DbftConsensusNode extends EventEmitter {
                 totalView
             };
             
-            if (this.m_state !== ConsensusState.none) {
-                // this.logger.warn(`dbft conensus update tip when in consensus `, this.m_context!);
-                this._cancel();
-            } else {
-                this._resetTimer();
-            }
+            this._cancel();
             this.m_network.setValidators(nextMiners);
         }
     }

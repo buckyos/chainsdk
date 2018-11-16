@@ -220,6 +220,16 @@ export type DposViewContext = {
     getCandidates: () => Promise<string[]>;
 } & ValueViewContext;
 
+export type DbftTransactionContext = {
+    register: (caller: string, address: string) => Promise<ErrorCode>;
+    unregister: (caller: string, address: string) => Promise<ErrorCode>;
+} & ValueTransactionContext;
+
+export type DbftEventContext = {
+    register: (caller: string, address: string) => Promise<ErrorCode>;
+    unregister: (caller: string, address: string) => Promise<ErrorCode>;
+} & ValueEventContext;
+
 export class ChainClient {
     constructor(options: {host: string, port: number, logger: LoggerInstance});
 
