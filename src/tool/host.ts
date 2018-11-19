@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import * as process from 'process';
-const heapdump = require('heapdump');
 import * as path from 'path';
-import * as fs from 'fs-extra';
 import {initUnhandledRejection, parseCommand, host as chainhost, initLogger} from '../client';
 
 Error.stackTraceLimit = 1000;

@@ -1,0 +1,1 @@
+./node_modules/.bin/startSN.cmd peerid=SN_PEER_DBFT out_host=127.0.0.1 tcpPort=12405 udpPort=12406

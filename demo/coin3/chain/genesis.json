@@ -1,0 +1,24 @@
+{
+	"preBalances": [{
+			"address": "1EYLLvMtXGeiBJ7AZ6KJRP2BdAQ2Bof79",
+			"amount": 10000000000
+		}, {
+			"address": "12nD5LgUnLZDbyncFnoFB43YxhSFsERcgQ",
+			"amount": 10000
+		}, {
+			"address": "1LuwjNj8wkqo237N7Gh8nZSSvUa6TZ5ds4",
+			"amount": 10000
+		}, {
+			"address": "13CS9dBwmaboedj2hPWx6Dgzt4cowWWoNZ",
+			"amount": 10000
+		}, {
+			"address": "12LKjfgQW26dQZMxcJdkj2iVP2rtJSzT88",
+			"amount": 100000
+		}
+	],
+	"miners": [
+		"13CS9dBwmaboedj2hPWx6Dgzt4cowWWoNZ",
+		"12nD5LgUnLZDbyncFnoFB43YxhSFsERcgQ"
+	],
+	"coinbase": "13CS9dBwmaboedj2hPWx6Dgzt4cowWWoNZ"
+}

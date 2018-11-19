@@ -246,10 +246,6 @@ export class HeaderStorage implements IHeaderStorage {
             let headerRaw = writer.render();
             await this.m_db.run(insertHeaderSql, { $hash: header.hash, $raw: headerRaw, $pre: header.preBlockHash, $verified: VERIFY_STATE.notVerified });
         } catch (e) {
-            let s: string = `${e}`;
-            if (s.includes('UNIQUE constraint failed')) {
-                return ErrorCode.RESULT_OK;
-            }
             this.m_logger.error(`save Header ${header.hash}(${header.number}) failed, ${e}`);
             return ErrorCode.RESULT_EXCEPTION;
         }

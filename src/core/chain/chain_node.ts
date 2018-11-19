@@ -427,27 +427,26 @@ export class ChainNode extends EventEmitter {
         let requests: string[] = [];
         let addRequesting = (header: BlockHeader): boolean => {
             if (this.m_blockStorage.has(header.hash)) {
-                if (this.m_blockWithLog) {
-                    let redoLog = this.m_storageManager.getRedoLog(header.hash);
-                    if (redoLog) {
-                        let block = this.m_blockStorage.get(header.hash);
-                        assert(block, `block storage load block ${header.hash} failed while file exists`);
-                        if (block) {
+                let block = this.m_blockStorage.get(header.hash);
+                assert(block, `block storage load block ${header.hash} failed while file exists`);
+                if (block) {
+                    if (this.m_blockWithLog) {
+                        let redoLog = this.m_storageManager.getRedoLog(header.hash);
+                        if (redoLog) {
                             setImmediate(() => {
                                 this.emit('blocks', {block, redoLog});
                             });
-                            return false;
+                        } else {
+                            setImmediate(() => {
+                                this.emit('blocks', {block});
+                            });
                         }
-                    }
-                } else {
-                    let block = this.m_blockStorage.get(header.hash);
-                    assert(block, `block storage load block ${header.hash} failed while file exists`);
-                    if (block) {
+                    } else {
                         setImmediate(() => {
                             this.emit('blocks', {block});
                         });
-                        return false;
                     }
+                    return false;
                 }
             }
             let sources = this.m_blockFromMap.get(header.hash);
@@ -742,18 +741,26 @@ export class ChainNode extends EventEmitter {
         }
         let rawBlocks = bwriter.render();
 
+        let redoLogRaw;
         // 如果请求参数里设置了redoLog,  则读取redoLog, 合并在返回的包里
-        if ( req.redoLog === 1 ) {
-            let redoLogWriter = new BufferWriter();
-            // 从本地文件中读取redoLog, 处理raw 拼接在block后
-            let redoLog = this.m_storageManager.getRedoLog(req.hash);
-            err = redoLog!.encode(redoLogWriter);
-            if (err) {
-                this.logger.error(`encode redolog ${req.hash} failed`);
-                return err;
-            }
-            let redoLogRaw = redoLogWriter.render();
-
+        if (req.redoLog === 1) {
+            do {
+                let redoLogWriter = new BufferWriter();
+                // 从本地文件中读取redoLog, 处理raw 拼接在block后
+                let redoLog = this.m_storageManager.getRedoLog(req.hash);
+                if (!redoLog) {
+                    this.logger.error(`${req.hash} redo log missing`);
+                    break;
+                }
+                err = redoLog!.encode(redoLogWriter);
+                if (err) {
+                    this.logger.error(`encode redolog ${req.hash} failed`);
+                    break;
+                }
+                redoLogRaw = redoLogWriter.render();
+            } while (false);
+        }
+        if (redoLogRaw) {
             let dataLength = rawBlocks.length + redoLogRaw.length;
             let pwriter = PackageStreamWriter.fromPackage(SYNC_CMD_TYPE.block, {
                 blockLength: rawBlocks.length,

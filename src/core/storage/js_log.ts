@@ -88,7 +88,7 @@ class KeyValueLogger implements IReadWritableKeyValue {
     }
 
     public async hdel(key: string, field: string): Promise<{err: ErrorCode}> {
-        this.owner.appendLog(`await ${this.name}.hdel(${toEvalText(key)},${toEvalText(field)})`);
+        this.owner.appendLog(`await ${this.name}.hdel(${toEvalText(key)},${toEvalText(field)});`);
         return {err: ErrorCode.RESULT_OK };
     }
     

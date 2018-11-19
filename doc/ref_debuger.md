@@ -3,7 +3,7 @@
 ```typescript
 createIndependSession(loggerOptions: {console: boolean, file?: {root: string, filename?: string}, level?: string}, dataDir: string): Promise<{err: ErrorCode, session?: ValueIndependDebugSession}>;
 ```
-创建独立调试session，用于开发阶段调试handler代码
+创建独立调试session，用于开发阶段调试handler代码</p>
 参数
 + loggerOptions
     + console 是否输出日志到控制台
